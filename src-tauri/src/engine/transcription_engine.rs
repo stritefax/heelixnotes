@@ -20,7 +20,6 @@ pub async fn transcribe_with_openai(file_path: &str, api_key: &str) -> Result<St
             .file_name(file_name.to_string())
             .mime_str("audio/wav")?)
         .text("model", "whisper-1")
-        .text("language", "en")
         .text("response_format", "text");
     
     // Send request to OpenAI API
