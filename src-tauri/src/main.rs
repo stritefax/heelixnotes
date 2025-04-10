@@ -756,15 +756,7 @@ async fn transcribe_audio(
         .await
         .map_err(|e| e.to_string())?
     };
-    
-    // Delete the audio file after successful transcription
-    if let Err(err) = std::fs::remove_file(&file_path) {
-        println!("Warning: Failed to delete audio file {}: {}", file_path, err);
-        // Continue even if deletion fails - we already have the transcription
-    } else {
-        println!("Successfully deleted audio file: {}", file_path);
-    }
-    
+        
     Ok(transcription)
 }
 
