@@ -55,7 +55,7 @@
       "identifier": "com.heelixchat.dev",
       "longDescription": "",
       "macOS": {
-        "entitlements": null,
+        "entitlements": "./macos-entitlements.plist",
         "exceptionDomain": "",
         "frameworks": [],
         "providerShortName": null,
