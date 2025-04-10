@@ -12,11 +12,17 @@ Heelix is an open-source note-taking and chat app built with Rust and Tauri that
 ## Key features
 
 🚀 Lightning-fast note creation and organization
+
 🧠 Project-based knowledge organization
+
 🎙️ Voice memo transcription
+
 🔒 Local-first storage for complete privacy
+
 🔍 Easily select relevant knowledge to pass through to the LLM using your own API key
+
 🗃️ Built-in local vector database for efficient document embedding and semantic search
+
 📑 File importing 
 
 ## Requirements
