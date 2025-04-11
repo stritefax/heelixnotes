@@ -1,5 +1,3 @@
-use std::fs::File;
-use std::io::Read;
 use std::path::Path;
 use reqwest::{self, multipart};
 use anyhow::{Result, anyhow};
@@ -43,7 +41,7 @@ pub async fn transcribe_with_openai(file_path: &str, api_key: &str) -> Result<St
 }
 
 /// Transcribe audio using Claude API (by encoding the audio and asking Claude to transcribe)
-pub async fn transcribe_with_claude(file_path: &str, api_key: &str) -> Result<String> {
+pub async fn transcribe_with_claude(file_path: &str, _api_key: &str) -> Result<String> {
     info!("Transcribing with Claude API: {}", file_path);
     
     // For Claude, we'll need to use OpenAI's Whisper API as a fallback

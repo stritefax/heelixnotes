@@ -1,9 +1,7 @@
 use crate::configuration::state::ServiceAccess;
 use crate::database;
 use crate::engine::similarity_search_engine::TOPK;
-use crate::repository::activity_log_repository::get_activity_full_text_by_id;
 use crate::repository::project_repository::get_activity_text_from_project;
-use crate::repository::activity_log_repository::get_additional_ids_from_sql_db;
 use crate::repository::settings_repository::get_setting;
 use async_openai::{
     config::OpenAIConfig,
@@ -107,7 +105,7 @@ pub async fn send_prompt_to_openai(
                     None
                 });
 
-            if let Some((document_name, text)) = result {
+            if let Some((_document_name, text)) = result {
                 debug!("Document {}: ID: {}", index + 1, document_id);
                 debug!("Document {}: Content: {}", index + 1, text);
                 // Limit text to 500 characters for filtering stage

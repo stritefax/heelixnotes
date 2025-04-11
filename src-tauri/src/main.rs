@@ -43,7 +43,10 @@ use crate::repository::permissions_repository::{get_permissions, update_permissi
 use crate::repository::project_repository::{
     delete_project, fetch_all_projects, add_blank_document, save_project, update_project, 
     get_activity_text_from_project, update_activity_text, update_activity_name, delete_project_document, 
-    ensure_unassigned_project, move_document_to_project, mark_document_as_vectorized,
+    ensure_unassigned_project, mark_document_as_vectorized,
+    tag_document_with_project as repo_tag_document_with_project,
+    untag_document_from_project as repo_untag_document_from_project,
+    get_document_projects as repo_get_document_projects,
 };
 use crate::repository::settings_repository::{get_setting, get_settings, insert_or_update_setting, update_setting_async};
 use tauri_plugin_autostart::MacosLauncher;
@@ -161,6 +164,7 @@ async fn main() {
             delete_activity,
             get_activity_full_text_by_id,
             get_app_project_activity_text,
+            update_project_activity_content,
             update_project_activity_text,
             add_project_blank_activity,
             update_project_activity_name,
@@ -174,6 +178,9 @@ async fn main() {
             read_audio_file,
             get_openai_api_key,
             extract_document_text,
+            tag_document_with_project,
+            untag_document_from_project,
+            get_document_projects,
         ])
         .manage(AppState {
             db: Default::default(),
@@ -531,7 +538,7 @@ fn update_project_activity_content(
 ) -> Result<(), String> {
     app_handle
         .db(|database| {
-            move_document_to_project(database, document_id, target_project_id)
+            repo_tag_document_with_project(database, document_id, target_project_id)
                 .map_err(|e| e.to_string())
         })
         .map_err(|e| e.to_string())
@@ -666,6 +673,47 @@ fn delete_project_activity(
 ) -> Result<(), String> {
     app_handle
         .db(|db| delete_project_document(db, activity_id))
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn tag_document_with_project(
+    app_handle: AppHandle,
+    document_id: i64,
+    project_id: i64,
+) -> Result<bool, String> {
+    app_handle
+        .db(|db| {
+            repo_tag_document_with_project(db, document_id, project_id)
+                .map(|_| true)
+                .map_err(|e| e.to_string())
+        })
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn untag_document_from_project(
+    app_handle: AppHandle,
+    document_id: i64,
+    project_id: i64,
+) -> Result<bool, String> {
+    app_handle
+        .db(|db| {
+            repo_untag_document_from_project(db, document_id, project_id)
+                .map(|_| true)
+                .map_err(|e| e.to_string())
+        })
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_document_projects(
+    app_handle: AppHandle,
+    document_id: i64,
+) -> Result<Vec<i64>, String> {
+    app_handle
+        .db(|db| repo_get_document_projects(db, document_id)
+            .map_err(|e| e.to_string()))
         .map_err(|e| e.to_string())
 }
 

@@ -17,6 +17,8 @@ import {
   InputLeftElement,
   Text as ChakraText,
   Tag,
+  TagLabel,
+  TagCloseButton,
   AlertDialog,
   AlertDialogBody,
   AlertDialogFooter,
@@ -24,8 +26,16 @@ import {
   AlertDialogContent,
   AlertDialogOverlay,
   Button,
+  Checkbox,
   useDisclosure,
-  useToast
+  useToast,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
+  ModalFooter
 } from "@chakra-ui/react";
 import { 
   Search, 
@@ -261,7 +271,9 @@ export const Projects: FC<{
 }> = ({ selectedActivityId, onSelectActivity }) => {
   const { 
     state, 
-    selectProject, 
+    selectProjects,
+    toggleProjectSelection,
+    getSelectedProjects,
     addProject, 
     deleteProject, 
     updateProject,
@@ -269,15 +281,19 @@ export const Projects: FC<{
     addBlankActivity,
     addUnassignedActivity,
     deleteActivity,
+    tagDocumentWithProject,
+    untagDocumentFromProject,
+    getDocumentProjects,
     updateActivityContent
   } = useProject();
   
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<null | number>(null);
 
-  const currentProject = useMemo(() => 
-    state.projects.find(p => p.id === state.selectedProject),
-    [state.projects, state.selectedProject]
+  // Get currently selected projects
+  const selectedProjects = useMemo(() => 
+    getSelectedProjects(),
+    [state.selectedProjects]
   );
 
   // Filter out the unassigned project for the dropdown
@@ -287,11 +303,15 @@ export const Projects: FC<{
   );
 
   const handleProjectSelect = (project: Project) => {
-    selectProject(project.id);
+    selectProjects([project.id]);
   };
 
-  const handleUnselectProject = () => {
-    selectProject(undefined);
+  const handleToggleProjectSelection = (project: Project) => {
+    toggleProjectSelection(project.id);
+  };
+
+  const handleUnselectProjects = () => {
+    selectProjects([]);
   };
 
   const handleNewProject = () => {
@@ -306,9 +326,6 @@ export const Projects: FC<{
 
   const handleDeleteProject = (project: Project) => {
     deleteProject(project.id);
-    if (state.selectedProject === project.id) {
-      selectProject(undefined);
-    }
   };
 
   const handleClose = () => {
@@ -325,9 +342,12 @@ export const Projects: FC<{
       <ProjectSelector
         projects={visibleProjects}
         allProjects={state.projects}
-        selectedProject={currentProject}
-        onSelectProject={handleProjectSelect}
-        onUnselectProject={handleUnselectProject}
+        selectedProjects={selectedProjects}
+        onSelectProjects={(projects: Project[]) => {
+          selectProjects(projects.map(p => p.id));
+        }}
+        onToggleProjectSelection={handleToggleProjectSelection}
+        onUnselectProjects={handleUnselectProjects}
         onNewProject={handleNewProject}
         onEditProject={handleEditProject}
         onDeleteProject={handleDeleteProject}
@@ -337,6 +357,9 @@ export const Projects: FC<{
         onAddBlankActivity={addBlankActivity}
         onAddUnassignedActivity={addUnassignedActivity}
         onDeleteActivity={deleteActivity}
+        onTagDocument={tagDocumentWithProject}
+        onUntagDocument={untagDocumentFromProject}
+        onGetDocumentProjects={getDocumentProjects}
         onUpdateActivityContent={updateActivityContent}
       />
       
@@ -359,14 +382,16 @@ type ActivityDocument = {
   name: string;
   projectId: number;
   projectName: string;
+  allProjects?: { id: number, name: string }[];
 };
 
 const ProjectSelector: FC<{
   projects: Project[];
   allProjects: Project[];
-  selectedProject: Project | undefined;
-  onSelectProject: (project: Project) => void;
-  onUnselectProject: () => void;
+  selectedProjects: Project[];
+  onSelectProjects: (projects: Project[]) => void;
+  onToggleProjectSelection: (project: Project) => void;
+  onUnselectProjects: () => void;
   onNewProject: () => void;
   onEditProject: (project: Project) => void;
   onDeleteProject: (project: Project) => void;
@@ -376,13 +401,17 @@ const ProjectSelector: FC<{
   onAddBlankActivity: () => Promise<number | undefined>;
   onAddUnassignedActivity: () => Promise<number | undefined>;
   onDeleteActivity: (activityId: number) => void;
+  onTagDocument: (documentId: number, projectId: number) => Promise<boolean>;
+  onUntagDocument: (documentId: number, projectId: number) => Promise<boolean>;
+  onGetDocumentProjects: (documentId: number) => Promise<number[]>;
   onUpdateActivityContent?: (activityId: number, content: string) => void;
 }> = ({
   projects,
   allProjects,
-  selectedProject,
-  onSelectProject,
-  onUnselectProject,
+  selectedProjects,
+  onSelectProjects,
+  onToggleProjectSelection,
+  onUnselectProjects,
   onNewProject,
   onEditProject,
   onDeleteProject,
@@ -392,12 +421,19 @@ const ProjectSelector: FC<{
   onAddBlankActivity,
   onAddUnassignedActivity,
   onDeleteActivity,
+  onTagDocument,
+  onUntagDocument,
+  onGetDocumentProjects,
   onUpdateActivityContent
 }) => {
   const [editingActivityId, setEditingActivityId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [documentSearchTerm, setDocumentSearchTerm] = useState("");
+  const [documentProjectTags, setDocumentProjectTags] = useState<{[key: number]: number[]}>({});
+  // Add state for tag management modal
+  const [tagModalOpen, setTagModalOpen] = useState(false);
+  const [currentDocument, setCurrentDocument] = useState<ActivityDocument | null>(null);
   
   // Add voice note recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -416,6 +452,9 @@ const ProjectSelector: FC<{
   
   // Add toast
   const toast = useToast();
+  
+  // Add temp state for tag changes in modal
+  const [tempTags, setTempTags] = useState<Set<number>>(new Set());
   
   // Function to format recording time as mm:ss
   const formatTime = (seconds: number): string => {
@@ -600,8 +639,8 @@ const ProjectSelector: FC<{
       // Create a new activity with the transcription
       let newActivityId;
       
-      if (selectedProject) {
-        console.log('Creating voice note in selected project:', selectedProject.name);
+      if (selectedProjects.length > 0) {
+        console.log('Creating voice note in selected projects:', selectedProjects.map(p => p.name));
         newActivityId = await onAddBlankActivity();
       } else {
         console.log('Creating voice note in unassigned project');
@@ -669,29 +708,54 @@ const ProjectSelector: FC<{
 
   // Get all activities across all projects or from the selected project only
   const allDocuments = useMemo(() => {
-    if (selectedProject) {
-      // Only return this project's activities
-      return selectedProject.activities.map((_, index) => ({
-        id: selectedProject.activities[index],
-        activity_id: selectedProject.activity_ids[index],
-        name: selectedProject.activity_names[index] 
-          || `Document ${selectedProject.activities[index]}`,
-        projectId: selectedProject.id,
-        projectName: selectedProject.name
-      }));
-    }
-    // Otherwise, gather from all projects
-    return allProjects.flatMap(project => 
-      project.activities.map((_, index) => ({
-        id: project.activities[index],
-        activity_id: project.activity_ids[index],
-        name: project.activity_names[index] 
-          || `Document ${project.activities[index]}`,
-        projectId: project.id,
-        projectName: project.name
-      }))
-    );
-  }, [selectedProject, allProjects]);
+    // Step 1: Collect all documents with their project associations
+    let documentMap = new Map<number, {
+      id: number;
+      activity_id: number | null;
+      name: string;
+      projects: { id: number, name: string }[];
+    }>();
+    
+    // Choose which projects to consider based on selection
+    const projectsToUse = selectedProjects.length > 0 ? selectedProjects : allProjects;
+    
+    // Map through all projects and collect document info
+    projectsToUse.forEach(project => {
+      project.activities.forEach((_, index) => {
+        const docId = project.activities[index];
+        const docName = project.activity_names[index] || `Document ${docId}`;
+        const activityId = project.activity_ids[index];
+        
+        // If document already exists in map, add this project to its projects array
+        if (documentMap.has(docId)) {
+          documentMap.get(docId)?.projects.push({
+            id: project.id,
+            name: project.name
+          });
+        } else {
+          // Otherwise create a new document entry
+          documentMap.set(docId, {
+            id: docId,
+            activity_id: activityId,
+            name: docName,
+            projects: [{ id: project.id, name: project.name }]
+          });
+        }
+      });
+    });
+    
+    // Step 2: Convert map to array and format for display
+    return Array.from(documentMap.values()).map(doc => ({
+      id: doc.id,
+      activity_id: doc.activity_id,
+      name: doc.name,
+      // Use first project as primary for compatibility
+      projectId: doc.projects[0].id,
+      projectName: doc.projects[0].name,
+      // Store all projects for reference
+      allProjects: doc.projects
+    }));
+  }, [selectedProjects, allProjects]);
 
   // Filter documents by name/project name
   const filteredDocuments = useMemo(() => {
@@ -733,13 +797,23 @@ const ProjectSelector: FC<{
   const handleAddNewDocument = async () => {
     let newActivityId;
     
-    if (selectedProject) {
+    // Use the first selected project or create in unassigned
+    const primaryProject = selectedProjects.length > 0 ? selectedProjects[0] : null;
+    
+    if (primaryProject) {
       newActivityId = await onAddBlankActivity();
     } else {
       newActivityId = await onAddUnassignedActivity();
     }
     
     if (newActivityId) {
+      // If multiple projects are selected, tag the document with all of them
+      if (selectedProjects.length > 1) {
+        for (let i = 1; i < selectedProjects.length; i++) {
+          await onTagDocument(newActivityId, selectedProjects[i].id);
+        }
+      }
+      
       handleStartEdit({ id: newActivityId, name: "New Document" });
     }
   };
@@ -766,8 +840,8 @@ const ProjectSelector: FC<{
       let newActivityId;
       
       try {
-        if (selectedProject) {
-          console.log('Creating document in selected project:', selectedProject.name);
+        if (selectedProjects.length > 0) {
+          console.log('Creating document in selected projects:', selectedProjects.map(p => p.name));
           newActivityId = await onAddBlankActivity();
         } else {
           console.log('Creating document in unassigned project');
@@ -882,7 +956,7 @@ const ProjectSelector: FC<{
         
         // Create new activity
         let newActivityId;
-        if (selectedProject) {
+        if (selectedProjects.length > 0) {
           newActivityId = await onAddBlankActivity();
         } else {
           newActivityId = await onAddUnassignedActivity();
@@ -931,24 +1005,184 @@ const ProjectSelector: FC<{
     }
   };
 
+  // Function to fetch document projects and update state
+  const fetchDocumentProjects = async (documentId: number) => {
+    const projectIds = await onGetDocumentProjects(documentId);
+    
+    // Update the documentProjectTags state (still useful as backup)
+    setDocumentProjectTags(prev => ({
+      ...prev,
+      [documentId]: projectIds
+    }));
+    
+    // Find the document in our allDocuments list and update its allProjects
+    const documentToUpdate = sortedDocuments.find(doc => doc.id === documentId);
+    if (documentToUpdate) {
+      // Get project objects for each ID
+      const projectObjects = projectIds.map(id => {
+        const project = allProjects.find(p => p.id === id);
+        return project ? { id, name: project.name } : { id, name: "Unknown" };
+      });
+      
+      // Update the document's allProjects property
+      documentToUpdate.allProjects = projectObjects;
+    }
+    
+    return projectIds;
+  };
+
+  // Load project tags for visible documents only when needed
+  useEffect(() => {
+    // Only fetch tags for documents that don't already have allProjects populated
+    sortedDocuments
+      .filter(doc => !doc.allProjects || doc.allProjects.length === 0)
+      .forEach(doc => {
+        fetchDocumentProjects(doc.id);
+      });
+  }, [sortedDocuments]);
+
+  // Handle Project Tags
+  const handleAddProjectTag = async (documentId: number, projectId: number) => {
+    const success = await onTagDocument(documentId, projectId);
+    if (success) {
+      // Update the projects for this document
+      const projectIds = await onGetDocumentProjects(documentId);
+      setDocumentProjectTags(prev => ({
+        ...prev,
+        [documentId]: projectIds
+      }));
+      
+      // Refresh documents to update allProjects
+      const selectedDocs = selectedProjects.length > 0 ? selectedProjects : allProjects;
+      if (currentDocument) {
+        // Find the project to add
+        const projectToAdd = allProjects.find(p => p.id === projectId);
+        if (projectToAdd && currentDocument.allProjects) {
+          // Only add if it doesn't already exist
+          if (!currentDocument.allProjects.some(p => p.id === projectId)) {
+            currentDocument.allProjects.push({
+              id: projectId,
+              name: projectToAdd.name
+            });
+          }
+        }
+      }
+    }
+  };
+
+  const handleRemoveProjectTag = async (documentId: number, projectId: number) => {
+    const success = await onUntagDocument(documentId, projectId);
+    if (success) {
+      // Update the projects for this document
+      const projectIds = await onGetDocumentProjects(documentId);
+      setDocumentProjectTags(prev => ({
+        ...prev,
+        [documentId]: projectIds
+      }));
+      
+      // Update the currentDocument if it's being edited
+      if (currentDocument && currentDocument.allProjects) {
+        // Remove the project from allProjects
+        currentDocument.allProjects = currentDocument.allProjects.filter(
+          p => p.id !== projectId
+        );
+      }
+    }
+  };
+
+  // Function to get project name by ID
+  const getProjectNameById = (projectId: number): string => {
+    const project = allProjects.find(p => p.id === projectId);
+    return project ? project.name : "Unknown";
+  };
+
+  // Project selection display for menu
+  const renderProjectsSelectionInfo = () => {
+    if (selectedProjects.length === 0) {
+      return 'Select Projects';
+    } else if (selectedProjects.length === 1) {
+      return selectedProjects[0].name;
+    } else {
+      return `${selectedProjects.length} Projects Selected`;
+    }
+  };
+
+  // Function to handle saving tag changes
+  const handleSaveProjectTags = async () => {
+    if (!currentDocument) return;
+    
+    // Get current tags
+    const currentTags = documentProjectTags[currentDocument.id] || [];
+    const currentTagSet = new Set(currentTags);
+    
+    // Find tags to add (in tempTags but not in current tags)
+    const tagsToAdd = Array.from(tempTags).filter(tag => !currentTagSet.has(tag));
+    
+    // Find tags to remove (in current tags but not in tempTags)
+    const tagsToRemove = currentTags.filter(tag => !tempTags.has(tag));
+    
+    // Add new tags
+    for (const tagId of tagsToAdd) {
+      await onTagDocument(currentDocument.id, tagId);
+    }
+    
+    // Remove tags
+    for (const tagId of tagsToRemove) {
+      await onUntagDocument(currentDocument.id, tagId);
+    }
+    
+    // Refresh document tags
+    await fetchDocumentProjects(currentDocument.id);
+    
+    // Force refresh of all document tags
+    sortedDocuments.forEach(doc => {
+      fetchDocumentProjects(doc.id);
+    });
+    
+    // Close modal
+    setTagModalOpen(false);
+  };
+  
+  // Function to handle checkbox changes in the modal
+  const handleTempTagToggle = (projectId: number) => {
+    setTempTags(prev => {
+      const newTags = new Set(prev);
+      if (newTags.has(projectId)) {
+        newTags.delete(projectId);
+      } else {
+        newTags.add(projectId);
+      }
+      return newTags;
+    });
+  };
+  
+  // Initialize temp tags when modal opens
+  useEffect(() => {
+    if (currentDocument && tagModalOpen) {
+      // Initialize with current tags
+      const currentTags = documentProjectTags[currentDocument.id] || [];
+      setTempTags(new Set(currentTags));
+    }
+  }, [currentDocument, tagModalOpen]);
+
   return (
     <Flex direction="column" w="full" gap={4} overflow="hidden">
       <Flex gap={2} w="full" align="center">
-        <Menu>
+        <Menu closeOnSelect={false}>
           <Flex position="relative" w="full">
             <StyledMenuButton w="full">
               <Text type="m" bold>
-                {selectedProject ? selectedProject.name : 'Select a Project'}
+                {renderProjectsSelectionInfo()}
               </Text>
             </StyledMenuButton>
 
-            {selectedProject && (
+            {selectedProjects.length > 0 && (
               <IconButton
                 position="absolute"
                 right="2"
                 top="50%"
                 transform="translateY(-50%)"
-                aria-label="Unselect project"
+                aria-label="Unselect projects"
                 icon={<X size={14} />}
                 size="xs"
                 variant="ghost"
@@ -956,7 +1190,7 @@ const ProjectSelector: FC<{
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  onUnselectProject();
+                  onUnselectProjects();
                 }}
                 _hover={{ bg: 'gray.100' }}
               />
@@ -1006,12 +1240,21 @@ const ProjectSelector: FC<{
               {filteredProjects.map((project) => (
                 <MenuItem 
                   key={project.id}
-                  onClick={() => onSelectProject(project)}
                   p={3}
                   h="40px"
+                  onClick={() => onToggleProjectSelection(project)}
                 >
                   <Flex justify="space-between" align="center" w="full">
-                    <Text type="m">{project.name}</Text>
+                    <Flex align="center" gap={2}>
+                      <Checkbox 
+                        isChecked={selectedProjects.some(p => p.id === project.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleProjectSelection(project);
+                        }}
+                      />
+                      <Text type="m">{project.name}</Text>
+                    </Flex>
                     <Badge colorScheme="blue" ml={2}>
                       {project.activities.length} docs
                     </Badge>
@@ -1021,14 +1264,18 @@ const ProjectSelector: FC<{
             </Box>
           </ScrollableMenuList>
         </Menu>
-        {/* Removed the separate "Create New Project" plus icon */}
       </Flex>
 
       {/* Document list section */}
       <Flex direction="column" w="full">
         <Flex justify="space-between" align="center" mb={3}>
           <Text type="m" bold>
-            {selectedProject ? `${selectedProject.name} Documents` : "All Documents"}
+            {selectedProjects.length > 0 
+              ? selectedProjects.length === 1 
+                ? `${selectedProjects[0].name} Documents` 
+                : `${selectedProjects.length} Projects Documents`
+              : "All Documents"
+            }
           </Text>
           
           <Flex gap={2}>
@@ -1067,9 +1314,9 @@ const ProjectSelector: FC<{
             </Tooltip>
             
             {/* Only show delete button when a project is selected */}
-            {selectedProject && (
+            {selectedProjects.length > 0 && (
               <DeleteProjectButton 
-                project={selectedProject} 
+                project={selectedProjects[0]} 
                 onDelete={onDeleteProject} 
               />
             )}
@@ -1168,10 +1415,7 @@ const ProjectSelector: FC<{
           </InputGroup>
         </SearchContainer>
         
-        <DocumentsContainer 
-          onPaste={handlePaste}
-          tabIndex={0}
-        >
+        <DocumentsContainer onPaste={handlePaste} tabIndex={0}>
           <Box>
             {sortedDocuments.length > 0 ? (
               sortedDocuments.map((document) => (
@@ -1213,22 +1457,26 @@ const ProjectSelector: FC<{
                             {truncateDocumentName(document.name)}
                           </DocumentName>
                           
-                          {/* Show project tag only if no project filter is applied */}
-                          {!selectedProject && (
-                            document.projectName === UNASSIGNED_PROJECT_NAME ? (
-                              <></>
-                            ) : (
-                              <ProjectTag size="sm" variant="subtle">
-                                {document.projectName}
-                              </ProjectTag>
-                            )
-                          )}
+                          {/* Display project tags */}
+                          <Flex wrap="wrap" gap={1} mt={1}>
+                            {document.allProjects?.map((project) => (
+                              <Tag 
+                                size="sm" 
+                                key={`${document.id}-${project.id}`}
+                                borderRadius="full"
+                                variant="outline"
+                                colorScheme="blue"
+                              >
+                                <TagLabel>{project.name}</TagLabel>
+                              </Tag>
+                            ))}
+                          </Flex>
                         </Box>
                       )}
                     </Box>
                   </Flex>
                   
-                  {/* Three dots menu in the top-right corner */}
+                  {/* Updated menu with project tag management */}
                   {!editingActivityId && (
                     <Menu placement="bottom-end" isLazy>
                       <MenuButton
@@ -1244,7 +1492,7 @@ const ProjectSelector: FC<{
                         top="2"
                         right="2"
                       />
-                      <MenuList minW="150px">
+                      <MenuList minW="200px">
                         <MenuItem
                           icon={<Edit size={14} />}
                           onClick={(e: React.MouseEvent) => {
@@ -1254,6 +1502,20 @@ const ProjectSelector: FC<{
                         >
                           Rename
                         </MenuItem>
+                        
+                        {/* Replace nested menu with simple MenuItem that opens modal */}
+                        <MenuItem
+                          icon={<FolderPlus size={14} />}
+                          onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            setCurrentDocument(document);
+                            setTagModalOpen(true);
+                          }}
+                        >
+                          Manage Project Tags
+                        </MenuItem>
+                        
+                        <Divider my={1} />
                         <MenuItem
                           icon={<Trash2 size={14} />}
                           onClick={(e: React.MouseEvent) => handleDeleteDocument(e, document)}
@@ -1279,8 +1541,8 @@ const ProjectSelector: FC<{
                 <Text type="m">
                   {documentSearchTerm 
                     ? "No matching documents found" 
-                    : selectedProject 
-                      ? "No documents added yet" 
+                    : selectedProjects.length > 0
+                      ? "No documents in selected projects" 
                       : "No documents added yet"}
                 </Text>
               </Flex>
@@ -1288,6 +1550,68 @@ const ProjectSelector: FC<{
           </Box>
         </DocumentsContainer>
       </Flex>
+      
+      {/* Add Project Tags Modal */}
+      <Modal isOpen={tagModalOpen} onClose={() => setTagModalOpen(false)} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Manage Project Tags</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6}>
+            {currentDocument && (
+              <>
+                <ChakraText fontWeight="bold" fontSize="md" mb={3}>
+                  Document: {currentDocument.name}
+                </ChakraText>
+                <Box maxH="300px" overflowY="auto" pr={2}>
+                  {projects.map(project => {
+                    const hasTag = currentDocument.allProjects
+                      ? currentDocument.allProjects.some(p => p.id === project.id)
+                      : documentProjectTags[currentDocument.id]?.includes(project.id) || false;
+                    return (
+                      <Flex 
+                        key={project.id}
+                        align="center" 
+                        justify="space-between"
+                        p={2}
+                        borderRadius="md"
+                        _hover={{ bg: 'gray.50' }}
+                        mb={2}
+                      >
+                        <Flex align="center" gap={2}>
+                          <Checkbox 
+                            isChecked={tempTags.has(project.id)}
+                            onChange={() => handleTempTagToggle(project.id)}
+                          />
+                          <Text type="m">{project.name}</Text>
+                        </Flex>
+                        <Badge colorScheme="blue">
+                          {project.activities.length} docs
+                        </Badge>
+                      </Flex>
+                    );
+                  })}
+                </Box>
+              </>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button 
+              variant="ghost" 
+              mr={3} 
+              onClick={() => setTagModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              colorScheme="blue" 
+              onClick={handleSaveProjectTags}
+            >
+              Save Changes
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Flex>
   );
 };

@@ -60,17 +60,75 @@ pub fn update_project(
     Ok(())
 }
 
-// Add this function to your database module:
-pub fn move_document_to_project(
+// Modified function to handle tagging documents with projects instead of moving
+pub fn tag_document_with_project(
     conn: &Connection,
     document_id: i64,
-    target_project_id: i64,
+    project_id: i64,
+) -> Result<(), rusqlite::Error> {
+    // Check if this document-project association already exists
+    let exists: bool = conn.query_row(
+        "SELECT 1 FROM projects_activities 
+         WHERE id = ?1 AND project_id = ?2 LIMIT 1",
+        params![document_id, project_id],
+        |_| Ok(true)
+    ).unwrap_or(false);
+
+    // If it doesn't exist, create the association
+    if !exists {
+        // First get the document details from its original location
+        let (document_name, full_text) = conn.query_row(
+            "SELECT document_name, full_document_text 
+             FROM projects_activities WHERE id = ?1",
+            params![document_id],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        )?;
+        
+        // Create a new association with the target project
+        conn.execute(
+            "INSERT INTO projects_activities (project_id, activity_id, document_name, full_document_text)
+             VALUES (?1, ?2, ?3, ?4)",
+            params![project_id, document_id, document_name, full_text],
+        )?;
+    }
+    
+    Ok(())
+}
+
+// New function to remove a project tag from a document
+pub fn untag_document_from_project(
+    conn: &Connection,
+    document_id: i64,
+    project_id: i64,
 ) -> Result<(), rusqlite::Error> {
     conn.execute(
-        "UPDATE projects_activities SET project_id = ?1 WHERE id = ?2",
-        params![target_project_id, document_id],
+        "DELETE FROM projects_activities 
+         WHERE id = ?1 AND project_id = ?2",
+        params![document_id, project_id],
     )?;
     Ok(())
+}
+
+// Get all projects associated with a document
+pub fn get_document_projects(
+    conn: &Connection,
+    document_id: i64,
+) -> Result<Vec<i64>, rusqlite::Error> {
+    let mut stmt = conn.prepare(
+        "SELECT project_id FROM projects_activities 
+         WHERE id = ?1"
+    )?;
+    
+    let project_ids = stmt.query_map(params![document_id], |row| {
+        row.get::<_, i64>(0)
+    })?;
+    
+    let mut result = Vec::new();
+    for id in project_ids {
+        result.push(id?);
+    }
+    
+    Ok(result)
 }
 
 pub fn add_project_activities(

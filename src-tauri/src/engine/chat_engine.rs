@@ -1,3 +1,8 @@
+use crate::configuration::state::ServiceAccess;
+use crate::database;
+use crate::engine::similarity_search_engine::TOPK;
+use crate::repository::project_repository::get_activity_text_from_project;
+use crate::repository::settings_repository::get_setting;
 use futures::StreamExt;
 use log::{debug, error, info};
 use reqwest::{Client, Response};
@@ -7,13 +12,8 @@ use std::collections::HashSet;
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
-use crate::configuration::state::ServiceAccess;
-use crate::database;
-use crate::engine::similarity_search_engine::TOPK;
 use crate::repository::activity_log_repository::get_activity_full_text_by_id;
-use crate::repository::project_repository::get_activity_text_from_project;
 use crate::repository::activity_log_repository::get_additional_ids_from_sql_db;
-use crate::repository::settings_repository::get_setting;
 
 #[derive(Serialize)]
 struct ClaudeRequest {
@@ -75,7 +75,7 @@ pub async fn send_prompt_to_llm(
         .build()
         .map_err(|e| format!("Failed to create client: {}", e))?;
 
-    let model_to_use = match model_id.as_deref() {
+    let _model_to_use = match model_id.as_deref() {
         Some("claude-3-haiku-20240307") => "claude-3-haiku-20240307",
         Some("claude-3-5-haiku-20241022") => "claude-3-5-haiku-20241022",
         _ => "claude-3-7-sonnet-20250219", // Default to Claude 3.7 Sonnet
@@ -134,7 +134,7 @@ pub async fn send_prompt_to_llm(
                     None
                 });
 
-            if let Some((document_name, text)) = result {
+            if let Some((_document_name, text)) = result {
                 debug!("Document {}: ID: {}", index + 1, document_id);
                 // Limit text to 500 characters for filtering stage
                 let filtered_text = if text.len() > 1000 {
@@ -409,7 +409,7 @@ async fn handle_success_response(
         let mut completion = String::new();
         let mut input_tokens = 0;
         let mut output_tokens = 0;
-        let mut buffer: Vec<u8> = Vec::new();  // Explicitly specify Vec<u8> for byte storage
+        let _buffer: Vec<u8> = Vec::new();  // Now marked as unused with an underscore
 
         while let Some(chunk) = stream.next().await {
             let chunk = chunk.map_err(|e| format!("Failed to read chunk: {}", e))?;

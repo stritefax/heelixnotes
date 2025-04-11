@@ -6,13 +6,14 @@ import { getFullActivityText } from "../data/activities";
 
 type ProjectState = {
   projects: Project[];
-  selectedProject: Project["id"] | undefined;
+  selectedProjects: Project["id"][];
   selectedActivityId: number | null;
 };
 
 type ProjectAction =
   | { type: "set"; payload: Project[] }
-  | { type: "select"; payload: Project["id"] | undefined }
+  | { type: "selectProjects"; payload: Project["id"][] }
+  | { type: "toggleProjectSelection"; payload: Project["id"] }
   | { type: "update"; payload: Project }
   | { type: "delete"; payload: Project["id"] }
   | { type: "selectActivity"; payload: number | null }
@@ -29,10 +30,19 @@ const projectReducer = (prev: ProjectState, action: ProjectAction): ProjectState
         projects: action.payload,
       };
 
-    case "select":
+    case "selectProjects":
       return {
         ...prev,
-        selectedProject: action.payload,
+        selectedProjects: action.payload,
+      };
+      
+    case "toggleProjectSelection":
+      const isAlreadySelected = prev.selectedProjects.includes(action.payload);
+      return {
+        ...prev,
+        selectedProjects: isAlreadySelected
+          ? prev.selectedProjects.filter(id => id !== action.payload)
+          : [...prev.selectedProjects, action.payload],
       };
 
     case "update":
@@ -51,7 +61,10 @@ const projectReducer = (prev: ProjectState, action: ProjectAction): ProjectState
       if (projectDeleteIndex >= 0) {
         prev.projects.splice(projectDeleteIndex, 1);
       }
-      return { ...prev };
+      return {
+        ...prev,
+        selectedProjects: prev.selectedProjects.filter(id => id !== action.payload),
+      };
       
     case "selectActivity":
       return {
@@ -121,7 +134,7 @@ const projectReducer = (prev: ProjectState, action: ProjectAction): ProjectState
 // Initial state
 const initialState: ProjectState = {
   projects: [],
-  selectedProject: undefined,
+  selectedProjects: [],
   selectedActivityId: null,
 };
 
@@ -159,8 +172,73 @@ export const useProject = () => {
     fetch();
   };
 
-  const selectProject = (projectId: Project["id"] | undefined) =>
-    dispatch({ type: "select", payload: projectId });
+  const selectProjects = (projectIds: Project["id"][]) =>
+    dispatch({ type: "selectProjects", payload: projectIds });
+    
+  const toggleProjectSelection = (projectId: Project["id"]) =>
+    dispatch({ type: "toggleProjectSelection", payload: projectId });
+
+  const getSelectedProjects = () => {
+    return state.projects.filter((project) => 
+      state.selectedProjects.includes(project.id)
+    );
+  };
+  
+  const tagDocumentWithProject = async (activityId: number, projectId: number) => {
+    try {
+      await projectService.tagDocumentWithProject(activityId, projectId);
+      await fetch();
+      return true;
+    } catch (error) {
+      console.error("Error tagging document with project:", error);
+      return false;
+    }
+  };
+  
+  const untagDocumentFromProject = async (activityId: number, projectId: number) => {
+    try {
+      await projectService.untagDocumentFromProject(activityId, projectId);
+      await fetch();
+      return true;
+    } catch (error) {
+      console.error("Error untagging document from project:", error);
+      return false;
+    }
+  };
+  
+  const getDocumentProjects = async (activityId: number) => {
+    try {
+      return await projectService.getDocumentProjects(activityId);
+    } catch (error) {
+      console.error("Error getting document projects:", error);
+      return [];
+    }
+  };
+
+  const getSelectedProjectsActivityText = async () => {
+    const selectedProjects = getSelectedProjects();
+    if (selectedProjects.length > 0) {
+      const allActivities: number[] = [];
+      
+      selectedProjects.forEach(project => {
+        project.activities.forEach(activityId => {
+          if (!allActivities.includes(activityId)) {
+            allActivities.push(activityId);
+          }
+        });
+      });
+      
+      const promises = allActivities.map(activityId =>
+        getFullActivityText(activityId)
+      );
+      
+      const fullTextActivities = await Promise.all(promises);
+      return fullTextActivities
+        .map((text, index) => `${index + 1}. Activity: \n ${text}`)
+        .join(", ");
+    }
+    return "";
+  };
 
   const selectActivity = (activityId: number | null) =>
     dispatch({ type: "selectActivity", payload: activityId });
@@ -247,7 +325,7 @@ export const useProject = () => {
   };
 
   const getSelectedProject = () => {
-    return state.projects.find((project) => project.id === state.selectedProject);
+    return state.projects.find((project) => project.id === state.selectedProjects[0]);
   };
   
   // Get visible projects (excluding unassigned project)
@@ -262,20 +340,6 @@ export const useProject = () => {
     );
   };
 
-  const getSelectedProjectActivityText = async () => {
-    const selectedProject = getSelectedProject();
-    if (selectedProject) {
-      const promises = selectedProject?.activities.map((activityId) =>
-        getFullActivityText(activityId)
-      );
-      const fullTextActivities = await Promise.all(promises);
-      return fullTextActivities
-        .map((text, index) => `${index + 1}. Activity: \n ${text}`)
-        .join(", ");
-    }
-    return "";
-  };
-  
   const fetchSelectedActivityText = async () => {
     if (state.selectedActivityId) {
       const projectWithActivity = getActivityProject(state.selectedActivityId);
@@ -298,7 +362,7 @@ export const useProject = () => {
       }
       
       // Call the backend service to update the project assignment
-      await projectService.moveDocumentToProject(activityId, targetProjectId);
+      await projectService.tagDocumentWithProject(activityId, targetProjectId);
       
       // Refresh the projects to update the local state
       await fetch();
@@ -312,13 +376,14 @@ export const useProject = () => {
 
   return {
     state,
-    getSelectedProject,
+    getSelectedProjects,
     getActivityProject,
     getVisibleProjects,
     getActivityName,
-    getSelectedProjectActivityText,
+    getSelectedProjectsActivityText,
     fetchSelectedActivityText,
-    selectProject,
+    selectProjects,
+    toggleProjectSelection,
     selectActivity,
     addProject,
     deleteProject,
@@ -327,7 +392,10 @@ export const useProject = () => {
     addBlankActivity,
     addUnassignedActivity,
     deleteActivity,
-    moveActivity,
-    updateActivityContent
+    tagDocumentWithProject,
+    untagDocumentFromProject,
+    getDocumentProjects,
+    updateActivityContent,
+    moveActivity
   };
 };

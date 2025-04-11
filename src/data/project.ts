@@ -55,10 +55,23 @@ export const addUnassignedActivity = async (): Promise<number> => {
   return await invoke<number>("ensure_unassigned_activity");
 };
 
-export const moveDocumentToProject = async (documentId: number, targetProjectId: number) => {
-  return await invoke("update_project_activity_content", {
+export const tagDocumentWithProject = async (documentId: number, projectId: number): Promise<boolean> => {
+  return await invoke<boolean>("tag_document_with_project", {
     documentId,
-    targetProjectId
+    projectId
+  });
+};
+
+export const untagDocumentFromProject = async (documentId: number, projectId: number): Promise<boolean> => {
+  return await invoke<boolean>("untag_document_from_project", {
+    documentId,
+    projectId
+  });
+};
+
+export const getDocumentProjects = async (documentId: number): Promise<number[]> => {
+  return await invoke<number[]>("get_document_projects", {
+    documentId
   });
 };
 
@@ -71,6 +84,8 @@ export const projectService = {
   addBlankActivity,
   deleteActivity,
   addUnassignedActivity,
-  moveDocumentToProject,
+  tagDocumentWithProject,
+  untagDocumentFromProject,
+  getDocumentProjects,
   updateActivityContent
 };
