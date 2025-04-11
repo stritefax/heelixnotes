@@ -16,6 +16,7 @@ type LocalSettings = {
   apiKeyOpenAi: string;
   apiKeyClaude: string;
   vectorizationEnabled: boolean;
+  darkMode: boolean;
 };
 export const GeneralSettings = () => {
   const toast = useToast();
@@ -25,6 +26,7 @@ export const GeneralSettings = () => {
     apiKeyOpenAi: settings.api_key_open_ai,
     apiKeyClaude: settings.api_key_claude,
     vectorizationEnabled: settings.vectorization_enabled,
+    darkMode: settings.dark_mode,
   });
 
   useEffect(() => {
@@ -33,6 +35,7 @@ export const GeneralSettings = () => {
       apiKeyOpenAi: settings.api_key_open_ai,
       apiKeyClaude: settings.api_key_claude,
       vectorizationEnabled: settings.vectorization_enabled,
+      darkMode: settings.dark_mode,
     });
   }, [settings]);
 
@@ -62,6 +65,16 @@ export const GeneralSettings = () => {
     }));
   };
 
+  const handleDarkModeToggle = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const isChecked = event.target.checked;
+    setLocalSettings((prevState) => ({
+      ...prevState,
+      darkMode: isChecked,
+    }));
+  };
+
   const onChangeOpenAiApiKey = (event: React.ChangeEvent<HTMLInputElement>) => {
     setLocalSettings((prevState) => ({
       ...prevState,
@@ -82,6 +95,7 @@ export const GeneralSettings = () => {
       api_key_open_ai: localSettings.apiKeyOpenAi,
       api_key_claude: localSettings.apiKeyClaude,
       vectorization_enabled: localSettings.vectorizationEnabled,
+      dark_mode: localSettings.darkMode,
     });
     savedSuccessfullyToast();
   };
@@ -148,6 +162,20 @@ export const GeneralSettings = () => {
           </Flex>
           <Text fontSize="sm" color="gray.500">
             When enabled, new documents will be indexed and used to augment queries when no project or attached text is selected. OpenAI API key is required to create embeddings. Disable if you prefer not to augment queries or index your documents.
+          </Text>
+
+          <Flex alignItems="center" mt={4} mb={2}>
+            <Text fontSize="md" mr={4}>
+              Dark Mode:
+            </Text>
+            <Switch
+              size="md"
+              isChecked={localSettings.darkMode}
+              onChange={handleDarkModeToggle}
+            />
+          </Flex>
+          <Text fontSize="sm" color="gray.500">
+            Enable dark mode for a more comfortable viewing experience in low-light environments.
           </Text>
 
           <Flex flex={1} justifyContent="flex-end" mt={4}>

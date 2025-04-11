@@ -65,8 +65,8 @@ const Container = styled(Box)`
 `;
 
 const StyledMenuButton = styled(MenuButton)`
-  background-color: white;
-  border: 1px solid var(--chakra-colors-gray-200);
+  background-color: var(--card-content-background);
+  border: 1px solid var(--default-border-color);
   border-radius: var(--chakra-radii-md);
   padding: 8px 12px;
   height: 40px;
@@ -74,21 +74,24 @@ const StyledMenuButton = styled(MenuButton)`
   align-items: center;
   width: 100%;
   transition: all 0.2s;
+  color: var(--text-default-color);
   
   &:hover {
-    background-color: var(--chakra-colors-gray-50);
-    border-color: var(--chakra-colors-gray-300);
+    background-color: var(--secondary-hover-color);
+    border-color: var(--default-border-color);
   }
   
   &:focus {
     box-shadow: 0 0 0 2px var(--chakra-colors-blue-100);
-    border-color: var(--chakra-colors-blue-500);
+    border-color: var(--active-border-color);
   }
 `;
 
 const ScrollableMenuList = styled(MenuList)`
   max-height: 300px;
   overflow-y: auto;
+  background-color: var(--card-content-background);
+  border-color: var(--default-border-color);
   
   /* Custom scrollbar styling */
   &::-webkit-scrollbar {
@@ -96,17 +99,17 @@ const ScrollableMenuList = styled(MenuList)`
   }
   
   &::-webkit-scrollbar-track {
-    background: var(--chakra-colors-gray-100);
+    background: var(--secondary-color);
     border-radius: 4px;
   }
   
   &::-webkit-scrollbar-thumb {
-    background: var(--chakra-colors-gray-300);
+    background: var(--scrollbar-color);
     border-radius: 4px;
   }
   
   &::-webkit-scrollbar-thumb:hover {
-    background: var(--chakra-colors-gray-400);
+    background: var(--scrollbar-color);
   }
 `;
 
@@ -126,29 +129,29 @@ const DocumentsContainer = styled(Box)`
   }
   
   &::-webkit-scrollbar-thumb {
-    background: var(--chakra-colors-gray-200);
+    background: var(--scrollbar-color);
     border-radius: 4px;
   }
   
   &::-webkit-scrollbar-thumb:hover {
-    background: var(--chakra-colors-gray-300);
+    background: var(--scrollbar-color);
   }
 `;
 
 const ProjectHeader = styled(Box)`
-  background-color: var(--chakra-colors-gray-50);
+  background-color: var(--secondary-color);
   padding: 8px 12px;
   font-size: 12px;
   font-weight: 500;
-  color: var(--chakra-colors-gray-600);
-  border-bottom: 1px solid var(--chakra-colors-gray-200);
+  color: var(--text-default-color);
+  border-bottom: 1px solid var(--default-border-color);
 `;
 
 const DocumentName = styled(ChakraText)`
   font-size: 14px;
   line-height: 1.4;
   font-weight: 400;
-  color: var(--chakra-colors-gray-800);
+  color: var(--text-default-color);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -166,8 +169,8 @@ const ProjectTag = styled(Tag)`
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 12px;
-  background-color: var(--chakra-colors-gray-100);
-  color: var(--chakra-colors-gray-600);
+  background-color: var(--secondary-color);
+  color: var(--text-default-color);
   z-index: 1;
 `;
 
@@ -178,8 +181,8 @@ const UnassignedTag = styled(Tag)`
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 12px;
-  background-color: var(--chakra-colors-gray-100);
-  color: var(--chakra-colors-gray-500);
+  background-color: var(--secondary-color);
+  color: var(--text-default-color);
   font-style: italic;
   z-index: 1;
 `;
@@ -221,18 +224,27 @@ const DeleteProjectButton: FC<{
         onClose={onClose}
       >
         <AlertDialogOverlay>
-          <AlertDialogContent>
-            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+          <AlertDialogContent 
+            bg="var(--card-content-background)"
+            borderColor="var(--default-border-color)"
+          >
+            <AlertDialogHeader fontSize="lg" fontWeight="bold" color="var(--text-default-color)">
               Delete Project
             </AlertDialogHeader>
             
-            <AlertDialogBody>
+            <AlertDialogBody color="var(--text-default-color)">
               Are you sure you want to delete "{project.name}"? 
               This action cannot be undone.
             </AlertDialogBody>
             
             <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={onClose}>
+              <Button 
+                ref={cancelRef} 
+                onClick={onClose}
+                color="var(--text-default-color)"
+                bg="var(--secondary-color)"
+                _hover={{ bg: "var(--secondary-hover-color)" }}
+              >
                 Cancel
               </Button>
               <Button 
@@ -958,7 +970,8 @@ const ProjectSelector: FC<{
                   e.stopPropagation();
                   onUnselectProject();
                 }}
-                _hover={{ bg: 'gray.100' }}
+                _hover={{ bg: 'var(--secondary-hover-color)' }}
+                color="var(--text-default-color)"
               />
             )}
           </Flex>
@@ -972,12 +985,12 @@ const ProjectSelector: FC<{
               alignItems="center" 
               position="sticky" 
               top="0" 
-              bg="white" 
+              bg="var(--card-content-background)" 
               zIndex="1"
             >
               <InputGroup size="sm">
                 <InputLeftElement pointerEvents="none">
-                  <Search size={14} color="var(--chakra-colors-gray-400)" />
+                  <Search size={14} color="var(--text-default-color)" />
                 </InputLeftElement>
                 <Input
                   placeholder="Search Projects..."
@@ -986,6 +999,11 @@ const ProjectSelector: FC<{
                   autoComplete="off"
                   autoCorrect="off"
                   spellCheck="false"
+                  bg="var(--card-content-background)"
+                  color="var(--text-default-color)"
+                  borderColor="var(--default-border-color)"
+                  _hover={{ borderColor: "var(--active-border-color)" }}
+                  _focus={{ borderColor: "var(--active-border-color)" }}
                 />
               </InputGroup>
             </Box>
@@ -997,6 +1015,17 @@ const ProjectSelector: FC<{
               onClick={onNewProject}
               p={3}
               h="40px"
+              bg="var(--card-content-background)"
+              _hover={{ bg: '#EDF2F7' }}
+              _focus={{ bg: '#EDF2F7' }}
+              sx={{
+                '[data-theme="dark"] &:hover': {
+                  bg: '#334155'
+                },
+                '[data-theme="dark"] &:focus': {
+                  bg: '#334155'
+                }
+              }}
             >
               <Text type="m">Create New Project</Text>
             </MenuItem>
@@ -1009,6 +1038,17 @@ const ProjectSelector: FC<{
                   onClick={() => onSelectProject(project)}
                   p={3}
                   h="40px"
+                  bg="var(--card-content-background)"
+                  _hover={{ bg: '#EDF2F7' }}
+                  _focus={{ bg: '#EDF2F7' }}
+                  sx={{
+                    '[data-theme="dark"] &:hover': {
+                      bg: '#334155'
+                    },
+                    '[data-theme="dark"] &:focus': {
+                      bg: '#334155'
+                    }
+                  }}
                 >
                   <Flex justify="space-between" align="center" w="full">
                     <Text type="m">{project.name}</Text>
@@ -1027,9 +1067,11 @@ const ProjectSelector: FC<{
       {/* Document list section */}
       <Flex direction="column" w="full">
         <Flex justify="space-between" align="center" mb={3}>
-          <Text type="m" bold>
-            {selectedProject ? `${selectedProject.name} Documents` : "All Documents"}
-          </Text>
+          <Box color="var(--text-default-color)">
+            <Text type="m" bold>
+              {selectedProject ? `${selectedProject.name} Documents` : "All Documents"}
+            </Text>
+          </Box>
           
           <Flex gap={2}>
             {/* Voice note recording button */}
@@ -1041,6 +1083,9 @@ const ProjectSelector: FC<{
                 variant={isRecording ? "solid" : "ghost"}
                 onClick={isRecording ? stopRecording : startRecording}
                 colorScheme={isRecording ? "red" : "gray"}
+                color="var(--text-default-color)"
+                bg={isRecording ? undefined : "transparent"}
+                _hover={{ bg: "var(--secondary-hover-color)" }}
               />
             </Tooltip>
             
@@ -1052,6 +1097,9 @@ const ProjectSelector: FC<{
                 size="sm"
                 variant="ghost"
                 onClick={handleFileImport}
+                color="var(--text-default-color)"
+                bg="transparent"
+                _hover={{ bg: "var(--secondary-hover-color)" }}
               />
             </Tooltip>
             
@@ -1063,6 +1111,9 @@ const ProjectSelector: FC<{
                 size="sm"
                 variant="ghost"
                 onClick={handleAddNewDocument}
+                color="var(--text-default-color)"
+                bg="transparent"
+                _hover={{ bg: "var(--secondary-hover-color)" }}
               />
             </Tooltip>
             
@@ -1150,7 +1201,7 @@ const ProjectSelector: FC<{
         <SearchContainer mb={3}>
           <InputGroup size="md">
             <InputLeftElement pointerEvents="none">
-              <Search size={16} color="var(--chakra-colors-gray-400)" />
+              <Search size={16} color="var(--text-default-color)" />
             </InputLeftElement>
             <Input
               placeholder="Search documents..."
@@ -1160,9 +1211,13 @@ const ProjectSelector: FC<{
               autoCorrect="off"
               spellCheck="false"
               borderRadius="full"
+              bg="var(--card-content-background)"
+              color="var(--text-default-color)"
+              borderColor="var(--default-border-color)"
+              _hover={{ borderColor: "var(--active-border-color)" }}
               _focus={{
-                boxShadow: "0 0 0 1px var(--chakra-colors-blue-400)",
-                borderColor: "blue.400"
+                boxShadow: "0 0 0 1px var(--active-border-color)",
+                borderColor: "var(--active-border-color)"
               }}
             />
           </InputGroup>
@@ -1182,17 +1237,31 @@ const ProjectSelector: FC<{
                   borderRadius="md"
                   align="center"
                   justify="space-between"
-                  _hover={{ bg: 'gray.50' }}
+                  _hover={{ bg: '#EDF2F7' }}
                   transition="all 0.2s"
-                  bg={selectedActivityId === document.id ? 'blue.50' : 'white'}
+                  bg={selectedActivityId === document.id ? 'blue.50' : 'var(--card-content-background)'}
+                  color={selectedActivityId === document.id ? 'blue.600' : 'var(--text-default-color)'}
+                  fontWeight={selectedActivityId === document.id ? 'bold' : 'normal'}
                   onClick={() => editingActivityId !== document.id && handleDocumentSelect(document)}
                   cursor="pointer"
                   position="relative"
                   minHeight="55px"
                   role="group"
+                  borderLeft={selectedActivityId === document.id ? "3px solid" : "none"}
+                  borderLeftColor={selectedActivityId === document.id ? "blue.600" : undefined}
+                  sx={{
+                    '[data-theme="dark"] &:hover': {
+                      bg: '#334155'
+                    },
+                    '[data-theme="dark"] &': {
+                      bg: selectedActivityId === document.id ? '#2d395a' : 'var(--card-content-background)',
+                      color: selectedActivityId === document.id ? '#4d7bbd' : 'var(--text-default-color)',
+                      borderLeftColor: selectedActivityId === document.id ? '#4d7bbd' : undefined
+                    }
+                  }}
                 >
                   <Flex align="center" gap={3} flex={1}>
-                    <Box color="gray.500">
+                    <Box color="var(--text-default-color)">
                       <File size={16} />
                     </Box>
                     <Box flex={1}>
@@ -1243,14 +1312,20 @@ const ProjectSelector: FC<{
                         position="absolute"
                         top="2"
                         right="2"
+                        color="var(--text-default-color)"
+                        bg="transparent"
+                        _hover={{ bg: "var(--secondary-hover-color)" }}
                       />
-                      <MenuList minW="150px">
+                      <MenuList minW="150px" bg="var(--card-content-background)" borderColor="var(--default-border-color)">
                         <MenuItem
                           icon={<Edit size={14} />}
                           onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
                             handleStartEdit(document);
                           }}
+                          bg="var(--card-content-background)"
+                          _hover={{ bg: "hover-bg" }}
+                          color="var(--text-default-color)"
                         >
                           Rename
                         </MenuItem>
@@ -1258,6 +1333,8 @@ const ProjectSelector: FC<{
                           icon={<Trash2 size={14} />}
                           onClick={(e: React.MouseEvent) => handleDeleteDocument(e, document)}
                           color="red.500"
+                          bg="var(--card-content-background)"
+                          _hover={{ bg: "hover-bg" }}
                         >
                           Delete
                         </MenuItem>
@@ -1271,7 +1348,7 @@ const ProjectSelector: FC<{
                 justify="center" 
                 align="center" 
                 p={8}
-                color="gray.500"
+                color="var(--text-default-color)"
                 flexDirection="column"
                 gap={2}
               >

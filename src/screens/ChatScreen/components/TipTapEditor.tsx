@@ -255,17 +255,23 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
         onClose={onClose}
       >
         <AlertDialogOverlay>
-          <AlertDialogContent>
-            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+          <AlertDialogContent bg="var(--card-content-background)" borderColor="var(--default-border-color)">
+            <AlertDialogHeader fontSize="lg" fontWeight="bold" color="var(--text-default-color)">
               Discard Changes
             </AlertDialogHeader>
 
-            <AlertDialogBody>
+            <AlertDialogBody color="var(--text-default-color)">
               You have unsaved changes. Are you sure you want to discard them?
             </AlertDialogBody>
 
             <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={onClose}>
+              <Button 
+                ref={cancelRef} 
+                onClick={onClose}
+                color="var(--text-default-color)"
+                bg="var(--secondary-color)"
+                _hover={{ bg: "var(--secondary-hover-color)" }}
+              >
                 Keep Editing
               </Button>
               <Button colorScheme="red" onClick={handleConfirmCancel} ml={3}>
@@ -276,12 +282,14 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
         </AlertDialogOverlay>
       </AlertDialog>
       
-      <Card width="100%" maxWidth="100%">
+      <Card width="100%" maxWidth="100%" bg="var(--card-content-background)" color="var(--text-default-color)" borderColor="var(--default-border-color)">
         <CardHeader 
           display="flex" 
           flexDirection="column" 
           alignItems="flex-start" 
           pb={2}
+          bg="var(--card-content-background)"
+          color="var(--text-default-color)"
         >
           <Flex 
             width="100%" 
@@ -298,10 +306,12 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
                 fontWeight="bold"
                 border="none"
                 padding="0"
+                bg="var(--card-content-background)"
+                color="var(--text-default-color)"
                 _focus={{
                   boxShadow: "none",
                   borderBottom: "2px solid",
-                  borderColor: "blue.500",
+                  borderColor: "var(--active-border-color)",
                   borderRadius: "0"
                 }}
                 maxWidth="80%"
@@ -312,6 +322,7 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
                 fontWeight="bold" 
                 isTruncated 
                 maxWidth="80%"
+                color="var(--text-default-color)"
               >
                 {documentTitle || "Untitled Document"}
               </Text>
@@ -332,6 +343,9 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
                     size="sm"
                     variant="outline"
                     colorScheme="blue"
+                    color="var(--text-default-color)"
+                    borderColor="var(--default-border-color)"
+                    _hover={{ bg: "var(--secondary-hover-color)" }}
                   >
                     Assign to Project
                   </MenuButton>
@@ -340,50 +354,57 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
                     maxHeight="320px" 
                     overflow="auto"
                     padding={0}
+                    bg="var(--card-content-background)"
+                    borderColor="var(--default-border-color)"
                   >
                     {/* Project search input - sticky at the top */}
                     <Box 
                       p={2} 
+                      bg="var(--card-content-background)" 
                       position="sticky" 
                       top="0" 
-                      bg="white" 
-                      zIndex={1}
-                      borderBottomWidth="1px"
-                      borderBottomColor="gray.100"
+                      zIndex="1"
+                      borderBottom="1px solid var(--default-border-color)"
                     >
                       <InputGroup size="sm">
                         <InputLeftElement pointerEvents="none">
-                          <Search size={14} color="var(--chakra-colors-gray-400)" />
+                          <Search size={14} color="var(--text-default-color)" />
                         </InputLeftElement>
                         <Input
                           placeholder="Search projects..."
                           value={projectSearchTerm}
                           onChange={(e) => setProjectSearchTerm(e.target.value)}
-                          autoComplete="off"
-                          autoCorrect="off"
-                          spellCheck="false"
-                          onClick={(e) => e.stopPropagation()}
+                          bg="var(--card-content-background)"
+                          color="var(--text-default-color)"
+                          borderColor="var(--default-border-color)"
+                          _hover={{ borderColor: "var(--active-border-color)" }}
+                          _focus={{ borderColor: "var(--active-border-color)" }}
                         />
                       </InputGroup>
                     </Box>
                     
-                    <Box p={1}>
-                      {filteredProjects.length > 0 ? (
-                        filteredProjects.map((project) => (
-                          <MenuItem 
-                            key={project.id}
-                            onClick={() => handleAssignToProject(project.id)}
-                            py={2}
-                          >
-                            {project.name}
-                          </MenuItem>
-                        ))
-                      ) : (
-                        <MenuItem isDisabled py={2}>
-                          {projectSearchTerm ? "No matching projects" : "No projects available"}
+                    {filteredProjects.length === 0 ? (
+                      <Box p={4} textAlign="center" color="var(--text-default-color)">
+                        No projects found
+                      </Box>
+                    ) : (
+                      filteredProjects.map(project => (
+                        <MenuItem 
+                          key={project.id} 
+                          onClick={() => handleAssignToProject(project.id)}
+                          p={3}
+                          bg="var(--card-content-background)"
+                          color="var(--text-default-color)"
+                          _hover={{ bg: "var(--secondary-hover-color)" }}
+                          _focus={{ bg: "var(--secondary-hover-color)" }}
+                        >
+                          <Flex align="center">
+                            <FolderPlus size={14} style={{ marginRight: '8px' }} />
+                            <Text color="var(--text-default-color)">{project.name}</Text>
+                          </Flex>
                         </MenuItem>
-                      )}
-                    </Box>
+                      ))
+                    )}
                   </MenuList>
                 </Menu>
               )}
@@ -397,6 +418,8 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
                       onClick={handleSave}
                       isDisabled={!hasChanges}
                       leftIcon={<Save size={16} />}
+                      color="var(--text-default-color)"
+                      _hover={{ bg: "var(--secondary-hover-color)" }}
                     >
                       Save
                     </Button>
@@ -406,6 +429,8 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
                     size="sm"
                     onClick={handleCancel} 
                     leftIcon={<X size={16} />}
+                    color="var(--text-default-color)"
+                    _hover={{ bg: "var(--secondary-hover-color)" }}
                   >
                     Cancel
                   </Button>
@@ -416,6 +441,8 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
                   size="sm" 
                   onClick={onEdit}
                   leftIcon={<Edit2 size={16} />}
+                  color="var(--text-default-color)"
+                  _hover={{ bg: "var(--secondary-hover-color)" }}
                 >
                   Edit
                 </Button>
@@ -424,7 +451,7 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
           </Flex>
         </CardHeader>
         
-        <CardBody width="100%">
+        <CardBody width="100%" bg="var(--card-content-background)">
           {isEditing && (
             <HStack mb={4} spacing={2} alignItems="center" flexWrap="wrap">
               <IconButton
@@ -434,6 +461,10 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
                 isActive={editor?.isActive('bold')}
                 variant={editor?.isActive('bold') ? 'solid' : 'outline'}
                 size="sm"
+                color="var(--text-default-color)"
+                bg="var(--card-content-background)"
+                borderColor="var(--default-border-color)"
+                _hover={{ bg: "var(--secondary-hover-color)" }}
               />
               <IconButton
                 aria-label="Italic"
@@ -442,6 +473,10 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
                 isActive={editor?.isActive('italic')}
                 variant={editor?.isActive('italic') ? 'solid' : 'outline'}
                 size="sm"
+                color="var(--text-default-color)"
+                bg="var(--card-content-background)"
+                borderColor="var(--default-border-color)"
+                _hover={{ bg: "var(--secondary-hover-color)" }}
               />
               <IconButton
                 aria-label="Bullet List"
@@ -450,6 +485,10 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
                 isActive={editor?.isActive('bulletList')}
                 variant={editor?.isActive('bulletList') ? 'solid' : 'outline'}
                 size="sm"
+                color="var(--text-default-color)"
+                bg="var(--card-content-background)"
+                borderColor="var(--default-border-color)"
+                _hover={{ bg: "var(--secondary-hover-color)" }}
               />
               <IconButton
                 aria-label="Undo"
@@ -457,6 +496,10 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
                 onClick={() => editor?.chain().focus().undo().run()}
                 isDisabled={!editor?.can().undo()}
                 size="sm"
+                color="var(--text-default-color)"
+                bg="var(--card-content-background)"
+                borderColor="var(--default-border-color)"
+                _hover={{ bg: "var(--secondary-hover-color)" }}
               />
               <IconButton
                 aria-label="Redo"
@@ -464,6 +507,10 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
                 onClick={() => editor?.chain().focus().redo().run()}
                 isDisabled={!editor?.can().redo()}
                 size="sm"
+                color="var(--text-default-color)"
+                bg="var(--card-content-background)"
+                borderColor="var(--default-border-color)"
+                _hover={{ bg: "var(--secondary-hover-color)" }}
               />
               
               {/* Font Family Dropdown */}
@@ -473,6 +520,10 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
                 onChange={(e) => handleFontChange(e.target.value)}
                 width="auto"
                 ml={2}
+                color="var(--text-default-color)"
+                bg="var(--card-content-background)"
+                borderColor="var(--default-border-color)"
+                _hover={{ borderColor: "var(--active-border-color)" }}
               >
                 {fonts.map((font) => (
                   <option 
@@ -488,22 +539,27 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
           )}
 
           <Box 
-            border="1px"
-            borderColor="white" 
+            border="0"
             borderRadius="md"
-            bg={isEditing ? 'white' : 'gray.50'}
+            bg="transparent"
             width="100%"
             sx={{
               ".ProseMirror": {
                 outline: "none",
                 width: "100%",
-                maxWidth: "none"
+                maxWidth: "none",
+                color: "var(--text-default-color)",
               },
               minH: "300px",
               p: 4,
               className: "prose max-w-none",
               fontSize: "var(--font-size-m)",
-              fontFamily: "var(--font-family-body)"
+              fontFamily: "var(--font-family-body)",
+              color: "var(--text-default-color)",
+              "[data-theme=\"dark\"] &": {
+                bg: "var(--secondary-color)",
+                border: "1px solid var(--default-border-color)"
+              }
             }}
           >
             <EditorContent editor={editor} style={{ width: '100%' }} />

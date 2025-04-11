@@ -21,6 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
   api_key_claude: "",
   api_key_open_ai: "",
   vectorization_enabled: false,
+  dark_mode: false,
 };
 
 type Update = {
@@ -36,6 +37,7 @@ export type Settings = {
   api_key_claude: string;
   api_key_open_ai: string;
   vectorization_enabled: boolean;
+  dark_mode: boolean;
 };
 
 type SettingsContextType = {
@@ -74,6 +76,7 @@ export const SettingsProvider: FC<PropsWithChildren> = ({ children }) => {
       api_key_claude: getSettingOrEmpty(response, "api_key_claude") || "",
       api_key_open_ai: getSettingOrEmpty(response, "api_key_open_ai") || "",
       vectorization_enabled: getSettingOrEmpty(response, "vectorization_enabled") == "true",
+      dark_mode: getSettingOrEmpty(response, "dark_mode") == "true",
     };
   };
 

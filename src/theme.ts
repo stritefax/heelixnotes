@@ -1,3 +1,9 @@
+import { ThemeConfig } from "@chakra-ui/react";
+
+type ThemeProps = {
+  colorMode: 'light' | 'dark'
+}
+
 export const theme = {
   fonts: {
     heading: `"Montserrat", sans-serif`,
@@ -12,6 +18,14 @@ export const theme = {
       600: "#2a5489",
     },
   },
+  styles: {
+    global: (props: ThemeProps) => ({
+      body: {
+        bg: props.colorMode === 'dark' ? 'gray.800' : 'white',
+        color: props.colorMode === 'dark' ? 'white' : 'gray.800',
+      },
+    }),
+  },
   components: {
     Button: {
       variants: {
@@ -24,5 +38,62 @@ export const theme = {
         },
       },
     },
+    Modal: {
+      baseStyle: (props: ThemeProps) => ({
+        dialog: {
+          bg: props.colorMode === 'dark' ? 'gray.800' : 'white',
+        }
+      })
+    },
+    Menu: {
+      baseStyle: (props: ThemeProps) => ({
+        list: {
+          bg: props.colorMode === 'dark' ? 'gray.700' : 'white',
+          borderColor: props.colorMode === 'dark' ? 'gray.600' : 'gray.200',
+        },
+        item: {
+          bg: props.colorMode === 'dark' ? 'gray.700' : 'white',
+          _hover: {
+            bg: props.colorMode === 'dark' ? 'gray.600' : 'gray.100',
+          },
+          _focus: {
+            bg: props.colorMode === 'dark' ? 'gray.600' : 'gray.100',
+          },
+        },
+      }),
+    },
+    Badge: {
+      baseStyle: (props: ThemeProps) => ({
+        bg: props.colorMode === 'dark' ? '#2d395a' : undefined,
+      }),
+    }
   },
+  config: {
+    initialColorMode: 'light',
+    useSystemColorMode: false,
+  },
+  semanticTokens: {
+    colors: {
+      "chakra-body-bg": { 
+        _light: "white", 
+        _dark: "#1a2233"
+      },
+      "chakra-body-text": { 
+        _light: "gray.800", 
+        _dark: "whiteAlpha.900"
+      },
+      "selected-bg": {
+        _light: "blue.50",
+        _dark: "#2d395a"
+      },
+      "selected-text": {
+        _light: "blue.600",
+        _dark: "#4d7bbd"
+      },
+      "hover-bg": {
+        _light: "gray.100",
+        _dark: "#334155"
+      }
+    }
+  }
 };

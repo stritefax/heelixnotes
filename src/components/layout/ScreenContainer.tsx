@@ -2,7 +2,7 @@ import { type FC, PropsWithChildren } from "react";
 import styled from "styled-components";
 
 const Container = styled.div`
- display: grid;
+  display: grid;
   height: 100%;
   align-items: center;
   overflow-y: auto;
@@ -11,7 +11,8 @@ const Container = styled.div`
   grid-template-areas:
     "sidebar header"
     "sidebar content";
-  background: var(--card-content-background);
+  background: var(--page-background-color);
+  color: var(--text-default-color);
   flex-direction: column;
   position: relative;
   font-weight: normal;

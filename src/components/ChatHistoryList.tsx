@@ -25,12 +25,12 @@ const ChatHistoryContainer = styled(Box)`
   }
   
   &::-webkit-scrollbar-thumb {
-    background: var(--chakra-colors-gray-200);
+    background: var(--scrollbar-color);
     border-radius: 4px;
   }
   
   &::-webkit-scrollbar-thumb:hover {
-    background: var(--chakra-colors-gray-300);
+    background: var(--scrollbar-color);
   }
 `;
 
@@ -40,6 +40,7 @@ const NewChatContainer = styled.div`
   flex: 1;
   gap: 8px;
   padding: 0 12px 0 0;
+  color: var(--text-default-color);
 `;
 
 type ChatHistoryListProps = {
@@ -74,7 +75,7 @@ export const ChatHistoryList: FC<ChatHistoryListProps> = ({
       <List zIndex={101}>
         <ListItem
           key="new-chat"
-          _hover={{ backgroundColor: "gray.100" }}
+          _hover={{ backgroundColor: "#EDF2F7" }}
           cursor="pointer"
           onClick={onNewChat}
           padding="var(--space-default)"
@@ -83,6 +84,14 @@ export const ChatHistoryList: FC<ChatHistoryListProps> = ({
           display="flex"
           justifyContent="space-between"
           alignItems="center"
+          backgroundColor="var(--card-content-background)"
+          color="var(--text-default-color)"
+          transition="all 0.2s"
+          sx={{
+            "[data-theme=\"dark\"] &:hover": {
+              backgroundColor: "#334155"
+            }
+          }}
         >
           <NewChatContainer>
             <FaPlus size={20} />
@@ -93,14 +102,30 @@ export const ChatHistoryList: FC<ChatHistoryListProps> = ({
         </ListItem>
 
         {chatHistory.map((chat) => {
-          const itemProps =
-            selectedChatId === chat.id
-              ? { backgroundColor: "gray.200", ref: selectedChatRef }
-              : { backgroundColor: "white" };
+          const itemProps = selectedChatId === chat.id
+            ? { 
+                backgroundColor: "#EBF8FF",
+                ref: selectedChatRef,
+                color: "#3182CE",
+                fontWeight: "bold",
+                borderLeft: "3px solid #3182CE",
+                sx: {
+                  "[data-theme=\"dark\"] &": {
+                    backgroundColor: "#2d395a",
+                    color: "#4d7bbd",
+                    borderLeftColor: "#4d7bbd"
+                  }
+                }
+              }
+            : { 
+                backgroundColor: "var(--card-content-background)",
+                color: "var(--text-default-color)",
+                borderLeft: "none"
+              };
           return (
             <ListItem
               key={chat.id}
-              _hover={{ backgroundColor: "gray.100" }}
+              _hover={{ backgroundColor: "#EDF2F7" }}
               cursor="pointer"
               onClick={() => selectChatId(chat.id)}
               padding="var(--space-default)"
@@ -109,6 +134,11 @@ export const ChatHistoryList: FC<ChatHistoryListProps> = ({
               display="flex"
               justifyContent="space-between"
               alignItems="center"
+              sx={{
+                "[data-theme=\"dark\"] &:hover": {
+                  backgroundColor: "#334155"
+                }
+              }}
               {...itemProps}
             >
               <Flex alignItems="flex-start" flexGrow={1} paddingRight={4}>
@@ -117,8 +147,9 @@ export const ChatHistoryList: FC<ChatHistoryListProps> = ({
                   overflow="hidden"
                   textOverflow="ellipsis"
                   whiteSpace="nowrap"
+                  color="inherit"
                 >
-                  <Text type="m" bold>
+                  <Text type="m" bold={selectedChatId === chat.id}>
                     {chat.name}
                   </Text>
                   <Text type="s">
@@ -135,6 +166,9 @@ export const ChatHistoryList: FC<ChatHistoryListProps> = ({
                 variant="ghost"
                 size="sm"
                 width={10}
+                color="var(--text-default-color)"
+                bg="transparent"
+                _hover={{ bg: "var(--secondary-hover-color)" }}
               >
                 <FaRegTrashAlt size={20} />
               </IconButton>

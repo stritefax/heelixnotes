@@ -11,7 +11,7 @@ body,
 
 :root {
   --primary-color: #3363ad;
-  --primary-hover-color: #3363ad1f;
+  --primary-hover-color: #e6f0ff; /* Light blue background for light mode */
   --primary-button-hover-color: #12356a;
   --primary-dissabled-color: #3363ad1f;
   --secondary-color: #edf2f7;
@@ -79,6 +79,39 @@ body,
 
   --breakpoint-medium: 768px;
   --breakpoint-large: 1024px;
+}
+
+/* Dark mode styles */
+[data-theme="dark"] {
+  --text-default-color: #e1e1e1;
+  --text-secondary-color: #e1e1e1;
+  --text-table-header-color: #a0a9bb;
+  --page-background-color: #1a2233; /* Dark blue background */
+  --card-header-background: #1e293b; /* Dark blue header */
+  --card-content-background: #1e293b; /* Dark blue content area */
+  --table-header-background: #273349;
+  --default-border-color: #334155; /* Dark blue border */
+  --active-border-color: #3363AD; /* Keep the brand blue */
+  --tooltip-background: #1e293b;
+  --icon-background: #273349;
+  --icon-active-background: #3363AD1a;
+  --paginator-background: #1e293b;
+
+  --secondary-color: #273349;
+  --secondary-hover-color: #334155;
+  --primary-color: #3363AD; /* Keep original blue */
+  
+  --category-1-light-color: #30b3a633;
+  --category-2-light-color: #4352d233;
+  --category-3-light-color: #7d075533;
+  --category-4-light-color: #ffa24b33;
+  --category-5-light-color: #ea3c3c33;
+  --category-6-light-color: #de3cea33;
+  --category-7-light-color: #1cc22733;
+  --category-default-light-color: #dbd83e33;
+  
+  --scrollbar-color: rgba(255, 255, 255, 0.3);
+  --primary-hover-color: #3363AD1f;
 }
 
 ::-webkit-scrollbar {

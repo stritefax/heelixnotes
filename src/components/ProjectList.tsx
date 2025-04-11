@@ -23,9 +23,10 @@ const ListItem = styled.div<{ isActive?: boolean }>`
   border-radius: var(--default-radius);
   align-items: center;
   background-color: ${({ isActive }) =>
-    isActive ? "var(--chakra-colors-gray-200)" : "none"};
+    isActive ? "var(--secondary-color)" : "var(--card-content-background)"};
+  color: var(--text-default-color);
   &:hover {
-    background-color: var(--chakra-colors-gray-100);
+    background-color: var(--secondary-hover-color);
   }
 `;
 
@@ -49,7 +50,7 @@ export const ProjectList: FC<ProjectListProps> = ({
   return (
     <Container>
       <ListItem onClick={onClickNew}>
-        <Flex gap={2}>
+        <Flex gap={2} color="var(--text-default-color)">
           <FaPlus size={20} />
           <Text type="m" bold>
             New Project
@@ -76,6 +77,9 @@ export const ProjectList: FC<ProjectListProps> = ({
                   }}
                 />
               }
+              bg="var(--card-content-background)"
+              color="var(--text-default-color)" 
+              _hover={{ bg: 'var(--secondary-hover-color)' }}
             />
             <IconButton
               aria-label="Delete"
@@ -87,6 +91,9 @@ export const ProjectList: FC<ProjectListProps> = ({
                   }}
                 />
               }
+              bg="var(--card-content-background)"
+              color="var(--text-default-color)"
+              _hover={{ bg: 'var(--secondary-hover-color)' }}
             />
           </Flex>
         </ListItem>
