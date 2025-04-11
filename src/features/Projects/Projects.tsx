@@ -1,4 +1,4 @@
-import { type FC, useState, useMemo, useRef, useEffect } from "react";
+import { type FC, useState, useMemo, useRef, useEffect, useCallback } from "react";
 import styled from "styled-components";
 import { invoke } from '@tauri-apps/api/tauri';
 import { 
@@ -49,6 +49,7 @@ import { open } from '@tauri-apps/api/dialog';
 import { listen } from '@tauri-apps/api/event';
 import { appConfigDir } from '@tauri-apps/api/path';
 import { writeTextFile, readTextFile } from '@tauri-apps/api/fs';
+import { HtmlSanitizer } from "@/components/HtmlSanitizer";
 
 //
 // -- Styled Components --
@@ -414,6 +415,14 @@ const ProjectSelector: FC<{
   // Add a state to store the current recording file path
   const [recordingFilePath, setRecordingFilePath] = useState<string | null>(null);
   
+   // Add states for HTML processing
+   const [htmlToProcess, setHtmlToProcess] = useState<string | null>(null);
+   const [pendingActivityData, setPendingActivityData] = useState<{
+     activityId: number | undefined;
+     plainText: string;
+     isHtml: boolean;
+   } | null>(null);
+
   // Add toast
   const toast = useToast();
   
@@ -756,16 +765,76 @@ const ProjectSelector: FC<{
   };
 
   // Handle paste events to create new documents
+  // Add this function to handle HTML processing
+  const processHtmlContent = useCallback(async (processedHtml: string) => {
+    // Only proceed if we have pending activity data
+    if (pendingActivityData && pendingActivityData.activityId) {
+      const { activityId, plainText, isHtml } = pendingActivityData;
+      
+      // Use a simple "New Document" title for HTML content
+      const documentName = isHtml ? 'New Document' : 'Pasted Document';
+      
+      console.log('Setting document name:', documentName);
+      await onUpdateActivityName(activityId, documentName);
+      
+      // Update content with the processed HTML
+      let contentUpdateSuccess = false;
+      
+      if (onUpdateActivityContent) {
+        try {
+          await onUpdateActivityContent(activityId, processedHtml);
+          console.log('Document content updated successfully via callback');
+          contentUpdateSuccess = true;
+        } catch (error) {
+          console.error('Failed to update document content via callback:', error);
+        }
+      }
+      
+      // Fallback to direct Tauri invoke if callback fails
+      if (!contentUpdateSuccess) {
+        try {
+          console.log('Trying direct Tauri invoke as fallback');
+          await invoke("update_project_activity_text", {
+            activityId,
+            text: processedHtml
+          });
+          console.log('Document content updated successfully via direct invoke');
+        } catch (error) {
+          console.error('Failed to update document content via direct invoke:', error);
+        }
+      }
+      
+      // Select the new document
+      console.log('Selecting new document');
+      onSelectActivity(activityId);
+      
+      // Clear pending data
+      setPendingActivityData(null);
+    }
+  }, [pendingActivityData, onUpdateActivityName, onUpdateActivityContent, onSelectActivity, toast]);
+
+  // Enhanced paste handler that captures and processes HTML
   const handlePaste = async (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedText = e.clipboardData.getData('text');
     
-    console.log('Paste event detected, text length:', pastedText.length);
+    // Try to get HTML content first
+    let content = e.clipboardData.getData('text/html');
+    let isHtml = !!content.trim();
     
-    if (pastedText.trim()) {
-      let newActivityId;
+    // Fall back to plain text if no HTML is available
+    if (!isHtml) {
+      content = e.clipboardData.getData('text');
+    }
+    
+    // Get plain text for fallback and title extraction
+    const plainText = e.clipboardData.getData('text');
+    
+    if (content.trim()) {
+      console.log('Paste event detected, isHtml:', isHtml);
       
       try {
+        // Create a new activity
+        let newActivityId;
         if (selectedProject) {
           console.log('Creating document in selected project:', selectedProject.name);
           newActivityId = await onAddBlankActivity();
@@ -777,55 +846,67 @@ const ProjectSelector: FC<{
         console.log('New activity ID created:', newActivityId);
         
         if (newActivityId) {
-          // Set the name to first line or truncated text
-          const firstLine = pastedText.split('\n')[0].trim();
-          const documentName = firstLine ? 
-            (firstLine.length > 30 ? firstLine.substring(0, 30) + '...' : firstLine) : 
-            'Pasted Document';
-          
-          console.log('Setting document name:', documentName);
-          await onUpdateActivityName(newActivityId, documentName);
-          
-          // Update the content of the new activity with the pasted text
-          console.log('Updating document content, text size:', pastedText.length);
-          
-          // Try multiple approaches to ensure content is updated
-          let contentUpdateSuccess = false;
-          
-          // First try the callback if available
-          if (onUpdateActivityContent) {
-            try {
-              await onUpdateActivityContent(newActivityId, pastedText);
-              console.log('Document content updated successfully via callback');
-              contentUpdateSuccess = true;
-            } catch (error) {
-              console.error('Failed to update document content via callback:', error);
-            }
+          if (isHtml) {
+            // For HTML content, set up the state for processing
+            setPendingActivityData({
+              activityId: newActivityId,
+              plainText,
+              isHtml
+            });
+            
+            // Trigger HTML processing with the hidden TipTap editor
+            setHtmlToProcess(content);
           } else {
-            console.error('onUpdateActivityContent is not available');
-          }
-          
-          // If callback fails, try direct Tauri invoke as fallback
-          if (!contentUpdateSuccess) {
-            try {
-              console.log('Trying direct Tauri invoke as fallback');
-              await invoke("update_project_activity_text", {
-                activityId: newActivityId,
-                text: pastedText
-              });
-              console.log('Document content updated successfully via direct invoke');
-              contentUpdateSuccess = true;
-            } catch (error) {
-              console.error('Failed to update document content via direct invoke:', error);
+            // For plain text, handle directly
+            const firstLine = plainText.split('\n')[0].trim();
+            const documentName = firstLine ? 
+              (firstLine.length > 30 ? firstLine.substring(0, 30) + '...' : firstLine) : 
+              'Pasted Document';
+            
+            console.log('Setting document name:', documentName);
+            await onUpdateActivityName(newActivityId, documentName);
+            
+            // Update the content with plain text
+            let contentUpdateSuccess = false;
+            
+            if (onUpdateActivityContent) {
+              try {
+                await onUpdateActivityContent(newActivityId, plainText);
+                console.log('Document content updated successfully via callback');
+                contentUpdateSuccess = true;
+              } catch (error) {
+                console.error('Failed to update document content via callback:', error);
+              }
             }
+            
+            // Fallback to direct Tauri invoke if callback fails
+            if (!contentUpdateSuccess) {
+              try {
+                console.log('Trying direct Tauri invoke as fallback');
+                await invoke("update_project_activity_text", {
+                  activityId: newActivityId,
+                  text: plainText
+                });
+                console.log('Document content updated successfully via direct invoke');
+              } catch (error) {
+                console.error('Failed to update document content via direct invoke:', error);
+              }
+            }
+            
+            // Select the new document
+            console.log('Selecting new document');
+            onSelectActivity(newActivityId);
           }
-          
-          // Select the new document
-          console.log('Selecting new document');
-          onSelectActivity(newActivityId);
         }
       } catch (error) {
         console.error('Error during paste processing:', error);
+        toast({
+          title: "Error processing paste",
+          description: "Failed to process pasted content",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
       }
     }
   };
@@ -1288,6 +1369,13 @@ const ProjectSelector: FC<{
           </Box>
         </DocumentsContainer>
       </Flex>
+      <HtmlSanitizer 
+        htmlToProcess={htmlToProcess} 
+        onHtmlProcessed={(html) => {
+          processHtmlContent(html);
+          setHtmlToProcess(null);
+        }} 
+      />
     </Flex>
   );
 };
