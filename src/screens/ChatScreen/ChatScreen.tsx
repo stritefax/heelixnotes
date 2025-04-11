@@ -46,6 +46,11 @@ const ChatContainer = styled.div`
   width: 100%;
   height: 100%;
   overflow-y: auto;
+  background-color: white;
+  
+  [data-theme="dark"] & {
+    background-color: var(--page-background-color);
+  }
 `;
 
 const MessagesScrollContainer = styled.div`

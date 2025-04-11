@@ -541,7 +541,7 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
           <Box 
             border="0"
             borderRadius="md"
-            bg="transparent"
+            bg="white"
             width="100%"
             sx={{
               ".ProseMirror": {

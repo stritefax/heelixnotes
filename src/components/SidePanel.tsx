@@ -19,8 +19,8 @@ const StyledTab = styled(Tab)`
   color: var(--text-default-color);
   
   &[aria-selected=true] {
-    background-color: #E6F0FF !important; /* Match the highlight in General Settings */
-    color: #3363AD !important; /* Match primary color */
+    background-color: #EBF8FF !important; /* Original blue.50 color */
+    color: #3182CE !important; /* Original blue.600 color */
     font-weight: bold;
   }
   

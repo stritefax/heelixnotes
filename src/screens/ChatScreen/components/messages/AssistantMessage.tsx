@@ -21,7 +21,10 @@ const MessageContainer = styled.div`
   text-align: left;
   position: relative;
   margin-bottom: 7px; // Add margin at the bottom to create space for the copy button
+`;
 
+const MessageTextColor = styled.div`
+  color: var(--text-default-color);
 `;
 
 type AssistantMessageProps = {
@@ -42,7 +45,9 @@ export const AssistantMessage = forwardRef<
   return (
     <MainContainer ref={ref}>
       <MessageContainer>
-        <MessageMarkdown content={message.content} />
+        <MessageTextColor>
+          <MessageMarkdown content={message.content} textColor="var(--text-default-color)" />
+        </MessageTextColor>
         {!isGenerating && (
           <IconButton
             aria-label="Copy"

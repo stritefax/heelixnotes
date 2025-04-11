@@ -38,6 +38,10 @@ const ImageHover = styled.div`
   justify-content: center;
   border-radius: 50%;
   align-items: center;
+
+  [data-theme="dark"] &:hover {
+    background-color: #334155;
+  }
 `;
 
 const UserBubble = styled.div`
@@ -51,6 +55,12 @@ const UserBubble = styled.div`
   font-size: 16px;
   font-weight: 600;
   overflow: hidden;
+  color: #555555;
+
+  [data-theme="dark"] & {
+    background-color: #1e293b;
+    color: #e1e1e1;
+  }
 `;
 
 const MenuContentContainer = styled.div`

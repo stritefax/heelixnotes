@@ -17,7 +17,7 @@ interface MessageMarkdownProps {
 
 export const MessageMarkdown: FC<MessageMarkdownProps> = ({
   content,
-  textColor = "black",
+  textColor = "var(--text-default-color)",
 }) => {
   return (
     <MessageMarkdownMemoized
@@ -31,38 +31,38 @@ export const MessageMarkdown: FC<MessageMarkdownProps> = ({
         },
         ol({ children }) {
           return (
-            <OrderedList pl={4} mb={4}>
+            <OrderedList pl={4} mb={4} color={textColor}>
               {children}
             </OrderedList>
           );
         },
         ul({ children }) {
           return (
-            <UnorderedList pl={4} mb={4}>
+            <UnorderedList pl={4} mb={4} color={textColor}>
               {children}
             </UnorderedList>
           );
         },
         li({ children }) {
-          return <ListItem>{children}</ListItem>;
+          return <ListItem color={textColor}>{children}</ListItem>;
         },
         h1({ children }) {
           return (
-            <Heading as="h1" size="md" mb={4}>
+            <Heading as="h1" size="md" mb={4} color={textColor}>
               {children}
             </Heading>
           );
         },
         h2({ children }) {
           return (
-            <Heading as="h2" size="md" mb={3}>
+            <Heading as="h2" size="md" mb={3} color={textColor}>
               {children}
             </Heading>
           );
         },
         h3({ children }) {
           return (
-            <Heading as="h3" size="md" mb={2}>
+            <Heading as="h3" size="md" mb={2} color={textColor}>
               {children}
             </Heading>
           );

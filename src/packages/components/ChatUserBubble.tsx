@@ -11,6 +11,12 @@ const UserBubble = styled.div`
   background-color: #f0f0f0;
   font-size: 16px;
   font-weight: 600;
+  color: #555555;
+
+  [data-theme="dark"] & {
+    background-color: #1e293b;
+    color: #e1e1e1;
+  }
 `;
 
 type ChatUserBubbleProps = {
