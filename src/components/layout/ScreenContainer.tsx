@@ -11,8 +11,7 @@ const Container = styled.div`
   grid-template-areas:
     "sidebar header"
     "sidebar content";
-  background: var(--page-background-color);
-  color: var(--text-default-color);
+  background: var(--card-content-background);
   flex-direction: column;
   position: relative;
   font-weight: normal;
