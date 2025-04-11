@@ -869,9 +869,11 @@ const ProjectSelector: FC<{
       });
       
       try {
-        // Extract text from file using Tauri command
-        const extractedText = await invoke<string>('extract_document_text', { 
-          filePath: selected
+        // Extract formatted content instead of plain text
+        // This will return HTML or Markdown content to preserve formatting
+        const extractedContent = await invoke<{text: string, isFormatted: boolean}>('extract_document_content', { 
+          filePath: selected,
+          preserveFormatting: true
         });
         
         // Get filename without extension for the document title
@@ -888,17 +890,29 @@ const ProjectSelector: FC<{
           newActivityId = await onAddUnassignedActivity();
         }
         
-        if (newActivityId && extractedText) {
+        if (newActivityId && extractedContent) {
           // Update activity name and content
           await onUpdateActivityName(newActivityId, documentName);
           
+          // Store the content along with formatting metadata
           if (onUpdateActivityContent) {
-            await onUpdateActivityContent(newActivityId, extractedText);
+            await onUpdateActivityContent(newActivityId, extractedContent.text);
+            
+            // If your storage system supports metadata, you can add a flag
+            // to indicate this content has formatting
+            if (extractedContent.isFormatted) {
+              await invoke("set_activity_metadata", {
+                activityId: newActivityId,
+                key: "content_format",
+                value: "html" // or "markdown" depending on what your backend returns
+              });
+            }
           } else {
             // Fallback to direct invoke
             await invoke("update_project_activity_text", {
               activityId: newActivityId,
-              text: extractedText
+              text: extractedContent.text,
+              isFormatted: extractedContent.isFormatted
             });
           }
           

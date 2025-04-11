@@ -174,6 +174,9 @@ async fn main() {
             read_audio_file,
             get_openai_api_key,
             extract_document_text,
+            extract_document_content,
+            set_activity_metadata,
+            get_activity_metadata,
         ])
         .manage(AppState {
             db: Default::default(),
@@ -953,6 +956,231 @@ async fn extract_document_text(file_path: String) -> Result<String, String> {
     }
 }
 
+#[tauri::command]
+async fn extract_document_content(file_path: String, preserve_formatting: bool) -> Result<serde_json::Value, String> {
+    println!("Extracting content from document: {} with formatting: {}", file_path, preserve_formatting);
+    
+    // Determine file type based on extension
+    let path = Path::new(&file_path);
+    let extension = path.extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.to_lowercase())
+        .unwrap_or_default();
+    
+    // If formatting is not requested, fall back to plain text
+    if !preserve_formatting {
+        let plain_text = match extension.as_str() {
+            "pdf" => extract_text_from_pdf(&file_path)?,
+            "docx" => extract_text_from_docx(&file_path)?,
+            "txt" | "md" | "rtf" => read_text_file(&file_path)?,
+            _ => return Err(format!("Unsupported file format: {}", extension))
+        };
+        
+        return Ok(serde_json::json!({
+            "text": plain_text,
+            "isFormatted": false
+        }));
+    }
+    
+    // Extract formatted content based on file type
+    match extension.as_str() {
+        "pdf" => {
+            // For PDF, we'll attempt to extract structured content with formatting
+            match extract_formatted_pdf(&file_path) {
+                Ok(html_content) => Ok(serde_json::json!({
+                    "text": html_content,
+                    "isFormatted": true
+                })),
+                Err(e) => {
+                    println!("Failed to extract formatted PDF content: {}", e);
+                    // Fallback to plain text extraction
+                    let plain_text = extract_text_from_pdf(&file_path)?;
+                    Ok(serde_json::json!({
+                        "text": plain_text,
+                        "isFormatted": false
+                    }))
+                }
+            }
+        },
+        "docx" => {
+            // For DOCX, extract with formatting
+            match extract_formatted_docx(&file_path) {
+                Ok(html_content) => Ok(serde_json::json!({
+                    "text": html_content,
+                    "isFormatted": true
+                })),
+                Err(e) => {
+                    println!("Failed to extract formatted DOCX content: {}", e);
+                    // Fallback to plain text extraction
+                    let plain_text = extract_text_from_docx(&file_path)?;
+                    Ok(serde_json::json!({
+                        "text": plain_text,
+                        "isFormatted": false
+                    }))
+                }
+            }
+        },
+        "txt" => {
+            // Plain text, just read the file
+            let content = read_text_file(&file_path)?;
+            Ok(serde_json::json!({
+                "text": content,
+                "isFormatted": false  // Plain text is never formatted
+            }))
+        },
+        "md" => {
+            // Markdown can be considered formatted text
+            let content = read_text_file(&file_path)?;
+            Ok(serde_json::json!({
+                "text": content,
+                "isFormatted": true  // Markdown has formatting
+            }))
+        },
+        "rtf" => {
+            // RTF is formatted, but we'll need to convert it
+            match extract_formatted_rtf(&file_path) {
+                Ok(html_content) => Ok(serde_json::json!({
+                    "text": html_content,
+                    "isFormatted": true
+                })),
+                Err(e) => {
+                    println!("Failed to extract formatted RTF content: {}", e);
+                    // Fallback to plain text
+                    let plain_text = read_text_file(&file_path)?;
+                    Ok(serde_json::json!({
+                        "text": plain_text,
+                        "isFormatted": false
+                    }))
+                }
+            }
+        },
+        _ => Err(format!("Unsupported file format: {}", extension))
+    }
+}
+
+// Function to extract formatted content from PDF as HTML
+fn extract_formatted_pdf(file_path: &str) -> Result<String, String> {
+    // This is a simplified version - in a production app, you'd use a more robust PDF to HTML converter
+    // For now, we'll use a basic approach to preserve some formatting
+    let text = match pdf_extract::extract_text(file_path) {
+        Ok(text) => text,
+        Err(err) => return Err(format!("Failed to extract text from PDF: {}", err))
+    };
+    
+    // Convert newlines to <br> tags and attempt to preserve some basic formatting
+    let mut html = String::from("<div>");
+    let mut in_paragraph = false;
+    
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            if in_paragraph {
+                html.push_str("</p>");
+                in_paragraph = false;
+            }
+            html.push_str("<br/>");
+        } else {
+            if !in_paragraph {
+                html.push_str("<p>");
+                in_paragraph = true;
+            }
+            html.push_str(trimmed);
+            html.push_str(" "); // Add space between lines that are part of the same paragraph
+        }
+    }
+    
+    if in_paragraph {
+        html.push_str("</p>");
+    }
+    html.push_str("</div>");
+    
+    Ok(html)
+}
+
+// Function to extract formatted content from DOCX as HTML
+fn extract_formatted_docx(file_path: &str) -> Result<String, String> {
+    // For a production app, you'd use a more robust DOCX to HTML converter
+    // This is a simplified approach
+    let bytes = std::fs::read(file_path).map_err(|e| e.to_string())?;
+    
+    // Simple XML-based extraction with basic formatting preservation
+    let content = String::from_utf8_lossy(&bytes);
+    let mut html = String::from("<div>");
+    
+    // Look for text content within XML elements
+    let mut in_text = false;
+    let mut current_text = String::new();
+    let mut in_paragraph = false;
+    
+    for c in content.chars() {
+        if c == '<' {
+            if !current_text.is_empty() {
+                if !in_paragraph {
+                    html.push_str("<p>");
+                    in_paragraph = true;
+                }
+                html.push_str(&current_text);
+                current_text.clear();
+            }
+            in_text = false;
+        } else if c == '>' {
+            in_text = true;
+        } else if in_text {
+            if c == '\n' || c == '\r' {
+                if !current_text.is_empty() {
+                    if in_paragraph {
+                        html.push_str("</p>");
+                        in_paragraph = false;
+                    }
+                    html.push_str("<p>");
+                    html.push_str(&current_text);
+                    html.push_str("</p>");
+                    current_text.clear();
+                }
+            } else {
+                current_text.push(c);
+            }
+        }
+    }
+    
+    if !current_text.is_empty() {
+        if !in_paragraph {
+            html.push_str("<p>");
+        }
+        html.push_str(&current_text);
+        html.push_str("</p>");
+    }
+    
+    html.push_str("</div>");
+    
+    if html.len() > "<div></div>".len() {
+        Ok(html)
+    } else {
+        // Fallback message for empty or unparseable DOCX
+        Ok("<div><p>This DOCX file could not be fully parsed with formatting. The content may be incomplete.</p></div>".to_string())
+    }
+}
+
+// Function to extract formatted content from RTF as HTML
+fn extract_formatted_rtf(file_path: &str) -> Result<String, String> {
+    // For RTF, we'll just do a basic conversion to preserve some formatting
+    // In a production app, you'd use a more robust RTF to HTML converter
+    let content = read_text_file(file_path)?;
+    
+    // Simple RTF to HTML conversion (very basic)
+    let mut html = String::from("<div>");
+    
+    // Add the raw content inside a pre tag for now
+    // In a real implementation, you'd parse RTF and convert to HTML properly
+    html.push_str("<pre>");
+    html.push_str(&content);
+    html.push_str("</pre>");
+    
+    html.push_str("</div>");
+    
+    Ok(html)
+}
+
 fn extract_text_from_pdf(file_path: &str) -> Result<String, String> {
     // Use the pdf-extract crate to extract text from PDFs
     match pdf_extract::extract_text(file_path) {
@@ -1002,4 +1230,121 @@ fn extract_text_from_docx(file_path: &str) -> Result<String, String> {
 fn read_text_file(file_path: &str) -> Result<String, String> {
     // Simple text file reading
     std::fs::read_to_string(file_path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_activity_metadata(app_handle: AppHandle, activity_id: i64, key: Option<String>) -> Result<serde_json::Value, String> {
+    println!("Getting metadata for activity {}", activity_id);
+    
+    app_handle.db(|db| -> Result<serde_json::Value, String> {
+        // Check if the activity exists
+        let exists_result = db.query_row(
+            "SELECT 1 FROM projects_activities WHERE id = ?1",
+            params![activity_id],
+            |_| Ok(())
+        );
+        
+        if exists_result.is_err() {
+            return Ok(serde_json::json!({}));
+        }
+        
+        // Check if metadata table exists
+        let table_exists = db.query_row(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='activity_metadata'",
+            rusqlite::params![],
+            |_| Ok(true)
+        ).unwrap_or(false);
+        
+        if !table_exists {
+            return Ok(serde_json::json!({}));
+        }
+        
+        // Query metadata based on whether a specific key was requested
+        let metadata = match key {
+            Some(key_value) => {
+                // Query for specific key
+                let mut stmt = db.prepare(
+                    "SELECT meta_key, meta_value FROM activity_metadata WHERE activity_id = ?1 AND meta_key = ?2"
+                ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
+                
+                let rows = stmt.query_map(params![activity_id, key_value], |row| {
+                    let meta_key: String = row.get(0)?;
+                    let meta_value: String = row.get(1)?;
+                    Ok((meta_key, meta_value))
+                }).map_err(|e| format!("Failed to query metadata: {}", e))?;
+                
+                let mut result = serde_json::json!({});
+                
+                for row_result in rows {
+                    if let Ok((key, value)) = row_result {
+                        result[key] = serde_json::Value::String(value);
+                    }
+                }
+                
+                result
+            },
+            None => {
+                // Query all metadata for this activity
+                let mut stmt = db.prepare(
+                    "SELECT meta_key, meta_value FROM activity_metadata WHERE activity_id = ?1"
+                ).map_err(|e| format!("Failed to prepare statement: {}", e))?;
+                
+                let rows = stmt.query_map(params![activity_id], |row| {
+                    let meta_key: String = row.get(0)?;
+                    let meta_value: String = row.get(1)?;
+                    Ok((meta_key, meta_value))
+                }).map_err(|e| format!("Failed to query metadata: {}", e))?;
+                
+                let mut result = serde_json::json!({});
+                
+                for row_result in rows {
+                    if let Ok((key, value)) = row_result {
+                        result[key] = serde_json::Value::String(value);
+                    }
+                }
+                
+                result
+            }
+        };
+        
+        Ok(metadata)
+    }).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn set_activity_metadata(app_handle: AppHandle, activity_id: i64, key: String, value: String) -> Result<(), String> {
+    println!("Setting metadata for activity {}: {} = {}", activity_id, key, value);
+    
+    app_handle.db(|db| -> Result<(), String> {
+        // Check if the activity exists
+        let exists_result = db.query_row(
+            "SELECT 1 FROM projects_activities WHERE id = ?1",
+            params![activity_id],
+            |_| Ok(())
+        );
+        
+        if exists_result.is_err() {
+            return Err(format!("Activity with ID {} does not exist", activity_id));
+        }
+        
+        // Check if metadata table exists, create if not
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS activity_metadata (
+                activity_id INTEGER NOT NULL,
+                meta_key TEXT NOT NULL,
+                meta_value TEXT,
+                PRIMARY KEY (activity_id, meta_key),
+                FOREIGN KEY (activity_id) REFERENCES projects_activities(id) ON DELETE CASCADE
+            )",
+            rusqlite::params![],
+        ).map_err(|e| format!("Failed to create metadata table: {}", e))?;
+        
+        // Insert or update metadata
+        db.execute(
+            "INSERT OR REPLACE INTO activity_metadata (activity_id, meta_key, meta_value) VALUES (?1, ?2, ?3)",
+            params![activity_id, key, value],
+        ).map_err(|e| format!("Failed to set metadata: {}", e))?;
+        
+        Ok(())
+    }).map_err(|e| e.to_string())
 }
